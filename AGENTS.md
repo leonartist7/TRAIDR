@@ -36,3 +36,10 @@ TRAIDR is a simulation-first micro-cap crypto intelligence and paper-trading res
 - Keep changes scoped to the active phase acceptance criteria.
 - Add focused tests when behavior changes.
 - If a requested change conflicts with `SAFETY_RULES.md`, stop and explain the conflict.
+
+## Git Publishing
+
+- After completing an implementation request, run the relevant tests.
+- If tests pass, stage the files changed for the request, create a concise commit, and push `main` to `origin` unless the user explicitly says not to push or names another branch.
+- Do not push when tests fail or when unrelated working-tree changes cannot be safely separated.
+- Report the commit SHA and push result in the final response.

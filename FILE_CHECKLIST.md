@@ -45,9 +45,16 @@ Status values are `not_started`, `partial`, or `complete`.
 | `onchain/rug_observations.py` | Anti-rug evidence helpers | yes | not_started |
 | `onchain/goat_adapter.py` | Optional GOAT SDK data adapter | no | not_started |
 | `execution/__init__.py` | Execution package marker | yes | complete |
-| `execution/models.py` | Approved simulation instruction models | yes | not_started |
+| `execution/models.py` | Approved simulation instruction models | yes | complete |
 | `execution/portfolio.py` | Simulated cash and holdings ledger | yes | not_started |
-| `execution/simulation_broker.py` | Paper broker | yes | not_started |
+| `execution/portfolio_state.py` | Simulated cash and holdings state ledger | yes | complete |
+| `execution/order_validator.py` | Risk-gated paper order validator | yes | complete |
+| `execution/slippage.py` | Deterministic paper slippage and partial fills | yes | complete |
+| `execution/trailing_stop.py` | Five percent simulated trailing stop | yes | complete |
+| `execution/take_profit.py` | Twenty percent simulated take-profit target | yes | complete |
+| `execution/audit.py` | Simulation execution audit bridge | yes | complete |
+| `execution/execution_daemon.py` | Simulation execution coordinator | yes | complete |
+| `execution/simulation_broker.py` | Paper broker | yes | complete |
 | `execution/testnet_boundary.py` | Later testnet-only boundary | no | not_started |
 | `risk/__init__.py` | Risk package marker | yes | complete |
 | `risk/models.py` | Risk input and decision models | yes | complete |
@@ -85,10 +92,14 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_results.py` | Shared result object unit tests | yes | complete |
 | `tests/unit/test_risk_engine.py` | Risk engine unit tests | yes | complete |
 | `tests/unit/test_anti_rug.py` | Veto regression tests | yes | complete |
+| `tests/unit/test_simulation_broker.py` | Paper broker unit tests | yes | complete |
+| `tests/unit/test_trailing_stop.py` | Trailing stop unit tests | yes | complete |
+| `tests/unit/test_take_profit.py` | Take-profit unit tests | yes | complete |
 | `tests/unit/test_vector_engine.py` | Vector behavior tests | yes | not_started |
 | `tests/unit/test_toon.py` | Payload boundary tests | yes | complete |
 | `tests/integration/test_storage_schema.py` | DuckDB schema initialization flow | yes | complete |
 | `tests/integration/test_storage_flow.py` | DuckDB integration flow | yes | complete |
+| `tests/integration/test_execution_flow.py` | Risk-gated execution integration flow | yes | complete |
 | `tests/integration/test_simulation_flow.py` | Paper broker integration flow | yes | not_started |
 | `tests/safety/test_no_live_trading.py` | Forbidden execution regression tests | yes | not_started |
 | `tests/safety/test_no_secret_payloads.py` | Secret boundary regression tests | yes | not_started |
