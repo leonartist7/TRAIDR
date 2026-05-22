@@ -14,6 +14,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `FILE_CHECKLIST.md` | Planned file inventory | yes | complete |
 | `MVP_CUTLINE.md` | Day-1 MVP boundary | yes | complete |
 | `TEST_PLAN.md` | Test strategy | yes | complete |
+| `.gitignore` | Local Python and Codex artifact ignores | yes | complete |
 | `pyproject.toml` | Python 3.11 packaging and test metadata | yes | complete |
 | `requirements.txt` | Bootstrap dependency list for local setup | yes | complete |
 | `config/__init__.py` | Config package marker | yes | complete |
@@ -64,14 +65,14 @@ Status values are `not_started`, `partial`, or `complete`.
 | `technicals/indicators.py` | Deterministic indicators | yes | not_started |
 | `technicals/vector_engine.py` | Feature vector builder | yes | not_started |
 | `storage/__init__.py` | Storage package marker | yes | complete |
-| `storage/duckdb_store.py` | DuckDB lifecycle helpers | yes | not_started |
-| `storage/schema.py` | Local schema initialization | yes | not_started |
-| `storage/repositories.py` | Audit and research repositories | yes | not_started |
+| `storage/duckdb_store.py` | DuckDB lifecycle helpers | yes | complete |
+| `storage/schema.py` | Local schema initialization | yes | complete |
+| `storage/repositories.py` | Audit and research repositories | yes | complete |
 | `utils/__init__.py` | Utilities package marker | yes | complete |
-| `utils/clocks.py` | Clock and freshness helpers | yes | not_started |
-| `utils/logging.py` | Safe structured logging | yes | not_started |
-| `utils/results.py` | Result and reason-code helpers | yes | not_started |
-| `utils/toon.py` | TOON payload boundary | yes | not_started |
+| `utils/clocks.py` | Clock and freshness helpers | yes | complete |
+| `utils/logging.py` | Safe structured logging | yes | complete |
+| `utils/results.py` | Result and reason-code helpers | yes | complete |
+| `utils/toon.py` | TOON payload boundary | yes | complete |
 | `memory/__init__.py` | Memory package marker | no | complete |
 | `memory/research_memory.py` | Scrubbed research memory | no | not_started |
 | `scripts/run_simulation.py` | Local simulation entry point | yes | not_started |
@@ -80,10 +81,13 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/safety.md` | Expanded safety documentation | no | not_started |
 | `docs/decisions.md` | Architecture decision notes | no | not_started |
 | `tests/conftest.py` | Shared test fixtures | yes | not_started |
+| `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
+| `tests/unit/test_results.py` | Shared result object unit tests | yes | complete |
 | `tests/unit/test_risk_engine.py` | Risk engine unit tests | yes | not_started |
 | `tests/unit/test_anti_rug.py` | Veto regression tests | yes | not_started |
 | `tests/unit/test_vector_engine.py` | Vector behavior tests | yes | not_started |
-| `tests/unit/test_toon.py` | Payload boundary tests | yes | not_started |
+| `tests/unit/test_toon.py` | Payload boundary tests | yes | complete |
+| `tests/integration/test_storage_schema.py` | DuckDB schema initialization flow | yes | complete |
 | `tests/integration/test_storage_flow.py` | DuckDB integration flow | yes | not_started |
 | `tests/integration/test_simulation_flow.py` | Paper broker integration flow | yes | not_started |
 | `tests/safety/test_no_live_trading.py` | Forbidden execution regression tests | yes | not_started |
