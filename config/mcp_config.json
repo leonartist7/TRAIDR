@@ -1,0 +1,20 @@
+{
+  "policy": {
+    "local_only": true,
+    "secrets_allowed_in_context": false,
+    "llm_direct_execution_allowed": false
+  },
+  "servers": {
+    "hummingbot": {
+      "enabled": false,
+      "allowed_modes": [
+        "simulation",
+        "testnet"
+      ],
+      "live_trading_allowed": false,
+      "withdrawals_allowed": false,
+      "notes": "Deferred optional boundary. Risk validation remains mandatory before any future simulation or testnet action."
+    }
+  }
+}
+

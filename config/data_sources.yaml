@@ -1,0 +1,23 @@
+policy:
+  paid_apis_allowed_for_mvp: false
+  source_failures_are_non_actionable: true
+  require_freshness_metadata: true
+  require_provenance_metadata: true
+
+sources:
+  dexscreener:
+    enabled: false
+    role: optional_market_data
+    cost_class: free
+    order_execution_allowed: false
+  goat_sdk:
+    enabled: false
+    role: optional_onchain_data
+    cost_class: optional_free_path_only
+    order_execution_allowed: false
+  fixture_snapshots:
+    enabled: true
+    role: local_simulation_validation
+    cost_class: local
+    order_execution_allowed: false
+

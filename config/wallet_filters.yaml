@@ -1,0 +1,12 @@
+policy:
+  purpose: onchain_observation_filters
+  private_key_access_allowed: false
+  wallet_signing_allowed: false
+  unknown_required_wallet_evidence: INSUFFICIENT_DATA
+
+filters:
+  exclude_known_exchange_wallets_when_labeled: true
+  flag_creator_control_when_observed: true
+  flag_extreme_holder_concentration_when_observed: true
+  require_provenance_for_wallet_labels: true
+

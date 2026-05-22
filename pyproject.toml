@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "traidr"
+version = "0.1.0"
+description = "Simulation-first micro-cap crypto intelligence and paper-trading research engine."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "TRAIDR contributors" }]
+dependencies = [
+    "duckdb>=1.1,<2.0",
+    "PyYAML>=6.0,<7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+
+[tool.setuptools]
+packages = [
+    "agents",
+    "config",
+    "data_pipeline",
+    "execution",
+    "memory",
+    "onchain",
+    "risk",
+    "sentiment",
+    "storage",
+    "technicals",
+    "utils",
+]

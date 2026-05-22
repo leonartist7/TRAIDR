@@ -1,0 +1,14 @@
+policy:
+  purpose: research_ranking_only
+  score_can_override_risk: false
+  anti_rug_veto_applies_before_bullish_ranking: true
+  insufficient_data_score: null
+
+weights:
+  liquidity_quality: 0.25
+  source_confidence: 0.2
+  momentum: 0.2
+  transaction_activity: 0.15
+  volatility_context: 0.1
+  sentiment_context: 0.1
+

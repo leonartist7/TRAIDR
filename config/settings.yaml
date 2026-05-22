@@ -1,0 +1,32 @@
+project:
+  name: traidr
+  version: "3.1"
+
+runtime:
+  mode: simulation
+  allowed_modes:
+    - simulation
+  default_action: HOLD
+  insufficient_data_action: INSUFFICIENT_DATA
+  local_only: true
+  live_trading_implemented: false
+  withdrawals_implemented: false
+
+simulation:
+  starting_capital_usd: 50.0
+  quote_currency: USD
+  execution_target: paper_broker
+
+llm_boundary:
+  payload_format: TOON
+  direct_order_execution_allowed: false
+  secret_access_allowed: false
+  allowed_intents:
+    - HOLD
+    - BUY
+    - SELL
+    - INSUFFICIENT_DATA
+
+storage:
+  engine: duckdb
+  local_database_path: data/traidr.duckdb

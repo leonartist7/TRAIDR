@@ -1,0 +1,16 @@
+execution:
+  default_target: paper_broker
+  allowed_targets:
+    - paper_broker
+  live_targets: []
+  withdrawal_targets: []
+
+paper_broker:
+  mode: simulation
+  starting_capital_usd: 50.0
+  requires_deterministic_risk_approval: true
+
+testnet:
+  enabled: false
+  notes: Deferred until an explicit risk-gated testnet boundary exists.
+

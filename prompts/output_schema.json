@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "traidr/prompts/output_schema.json",
+  "title": "TRAIDR Bounded Research Intent",
+  "description": "Schema for research output only. It is never an executable order.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "intent",
+    "confidence",
+    "reason_codes",
+    "evidence_summary",
+    "risk_handoff_required"
+  ],
+  "properties": {
+    "intent": {
+      "type": "string",
+      "enum": [
+        "HOLD",
+        "BUY",
+        "SELL",
+        "INSUFFICIENT_DATA"
+      ],
+      "default": "HOLD"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "evidence_summary": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "maxItems": 8
+    },
+    "risk_handoff_required": {
+      "type": "boolean",
+      "const": true
+    },
+    "anti_rug_hard_fail_seen": {
+      "type": "boolean",
+      "default": false
+    },
+    "data_quality": {
+      "type": "string",
+      "enum": [
+        "sufficient",
+        "missing",
+        "stale",
+        "malformed",
+        "contradictory",
+        "uncertain"
+      ],
+      "default": "uncertain"
+    }
+  }
+}

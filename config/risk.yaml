@@ -1,0 +1,36 @@
+risk_engine:
+  authority: deterministic
+  validation_required_before_simulation_action: true
+  default_decision: HOLD
+  insufficient_data_decision: INSUFFICIENT_DATA
+
+simulation_limits:
+  starting_capital_usd: 50.0
+  max_open_positions: 3
+  max_position_notional_usd: 5.0
+  max_total_asset_exposure_usd: 15.0
+  max_live_trade_notional_usd: 0.0
+  max_withdrawal_notional_usd: 0.0
+
+data_quality:
+  require_source_timestamp: true
+  require_source_provenance: true
+  missing_required_data: INSUFFICIENT_DATA
+  stale_required_data: INSUFFICIENT_DATA
+  malformed_required_data: INSUFFICIENT_DATA
+  contradictory_required_data: INSUFFICIENT_DATA
+  uncertain_required_data: INSUFFICIENT_DATA
+
+anti_rug:
+  hard_fail_overrides_bullish_signals: true
+  unknown_required_evidence_blocks_new_entries: true
+  hard_fail_conditions:
+    - missing_or_inaccessible_liquidity
+    - liquidity_below_policy_floor
+    - required_liquidity_status_unknown
+    - mint_freeze_blacklist_or_sell_restriction_signal
+    - unsafe_holder_or_creator_control_signal
+    - honeypot_tax_route_or_sellability_signal
+    - ambiguous_contract_pair_chain_or_provenance
+    - stale_malformed_missing_or_uncertain_required_evidence
+
