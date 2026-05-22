@@ -30,20 +30,20 @@ Status values are `not_started`, `partial`, or `complete`.
 | `config/defaults.toml` | Safe simulation defaults | yes | not_started |
 | `config/risk_limits.toml` | Editable risk limit defaults | yes | not_started |
 | `data_pipeline/__init__.py` | Data pipeline package marker | yes | complete |
-| `data_pipeline/contracts.py` | Snapshot and adapter contracts | yes | not_started |
-| `data_pipeline/validation.py` | Freshness and shape validation | yes | not_started |
-| `data_pipeline/normalization.py` | Source normalization helpers | yes | not_started |
-| `data_pipeline/source_registry.py` | Free-source adapter registry | yes | not_started |
-| `data_pipeline/dexscreener_adapter.py` | Optional DexScreener market adapter | no | not_started |
+| `data_pipeline/contracts.py` | Snapshot and adapter contracts | yes | complete |
+| `data_pipeline/validation.py` | Freshness and shape validation | yes | complete |
+| `data_pipeline/normalization.py` | Source normalization helpers | yes | complete |
+| `data_pipeline/source_registry.py` | Free-source adapter registry | yes | complete |
+| `data_pipeline/dexscreener_adapter.py` | Optional DexScreener market adapter | no | complete |
 | `agents/__init__.py` | Agents package marker | yes | complete |
-| `agents/intents.py` | Bounded intent models | yes | not_started |
-| `agents/orchestrator.py` | Research and risk routing | yes | not_started |
-| `agents/llm_gateway.py` | Scrubbed LLM boundary | yes | not_started |
-| `agents/research_agent.py` | Research intent producer | no | not_started |
+| `agents/intents.py` | Bounded intent models | yes | complete |
+| `agents/orchestrator.py` | Research and risk routing | yes | complete |
+| `agents/llm_gateway.py` | Scrubbed LLM boundary | yes | complete |
+| `agents/research_agent.py` | Research intent producer | no | complete |
 | `onchain/__init__.py` | On-chain package marker | yes | complete |
-| `onchain/contracts.py` | On-chain observation contracts | yes | not_started |
-| `onchain/rug_observations.py` | Anti-rug evidence helpers | yes | not_started |
-| `onchain/goat_adapter.py` | Optional GOAT SDK data adapter | no | not_started |
+| `onchain/contracts.py` | On-chain observation contracts | yes | complete |
+| `onchain/rug_observations.py` | Anti-rug evidence helpers | yes | complete |
+| `onchain/goat_adapter.py` | Optional GOAT SDK data adapter | no | complete |
 | `execution/__init__.py` | Execution package marker | yes | complete |
 | `execution/models.py` | Approved simulation instruction models | yes | complete |
 | `execution/portfolio.py` | Simulated cash and holdings ledger | yes | not_started |
@@ -63,8 +63,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `risk/engine.py` | Final deterministic validator | yes | complete |
 | `prompts/master_system_prompt.md` | Bounded research system prompt | yes | complete |
 | `prompts/output_schema.json` | Research output schema | yes | complete |
-| `prompts/system_research.md` | Safe system prompt template | no | not_started |
-| `prompts/intent_schema.md` | Bounded intent response instructions | no | not_started |
+| `prompts/system_research.md` | Safe system prompt template | no | complete |
+| `prompts/intent_schema.md` | Bounded intent response instructions | no | complete |
 | `sentiment/__init__.py` | Sentiment package marker | no | complete |
 | `sentiment/contracts.py` | Sentiment feature contracts | no | not_started |
 | `sentiment/features.py` | Optional free sentiment features | no | not_started |
@@ -81,7 +81,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `utils/results.py` | Result and reason-code helpers | yes | complete |
 | `utils/toon.py` | TOON payload boundary | yes | complete |
 | `memory/__init__.py` | Memory package marker | no | complete |
-| `memory/research_memory.py` | Scrubbed research memory | no | not_started |
+| `memory/research_memory.py` | Scrubbed research memory | no | complete |
 | `scripts/run_simulation.py` | Local simulation entry point | yes | not_started |
 | `scripts/inspect_db.py` | Local DuckDB inspection helper | no | not_started |
 | `docs/architecture.md` | Architecture notes | no | not_started |
@@ -89,6 +89,12 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/decisions.md` | Architecture decision notes | no | not_started |
 | `tests/conftest.py` | Shared test fixtures | yes | not_started |
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
+| `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |
+| `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
+| `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |
+| `tests/unit/test_intents.py` | Strict bounded intent parser tests | yes | complete |
+| `tests/unit/test_llm_gateway.py` | Mock LLM gateway tests | yes | complete |
+| `tests/unit/test_orchestrator.py` | Agent risk routing tests | yes | complete |
 | `tests/unit/test_results.py` | Shared result object unit tests | yes | complete |
 | `tests/unit/test_risk_engine.py` | Risk engine unit tests | yes | complete |
 | `tests/unit/test_anti_rug.py` | Veto regression tests | yes | complete |
@@ -102,5 +108,5 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/integration/test_execution_flow.py` | Risk-gated execution integration flow | yes | complete |
 | `tests/integration/test_simulation_flow.py` | Paper broker integration flow | yes | not_started |
 | `tests/safety/test_no_live_trading.py` | Forbidden execution regression tests | yes | not_started |
-| `tests/safety/test_no_secret_payloads.py` | Secret boundary regression tests | yes | not_started |
-| `tests/safety/test_insufficient_data.py` | Fail-closed data tests | yes | not_started |
+| `tests/safety/test_no_secret_payloads.py` | Secret boundary regression tests | yes | complete |
+| `tests/safety/test_insufficient_data.py` | Fail-closed data tests | yes | complete |
