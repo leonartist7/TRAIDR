@@ -43,6 +43,12 @@ The local simulation command will be added after the simulation broker exists.
 pytest
 ```
 
+## Optional Graphify Analysis
+
+Graphify may be used as an optional dev-only repository analysis tool. It is not part of TRAIDR runtime dependencies and is scoped by `.graphifyignore` to avoid local environments, caches, storage artifacts, log output, DuckDB or Parquet files, and `.env` files.
+
+See `docs/graphify.md` for the optional Codex and PowerShell workflow.
+
 ## Architecture Summary
 
 TRAIDR is planned around explicit boundaries:
