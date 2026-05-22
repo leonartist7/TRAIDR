@@ -50,10 +50,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `execution/simulation_broker.py` | Paper broker | yes | not_started |
 | `execution/testnet_boundary.py` | Later testnet-only boundary | no | not_started |
 | `risk/__init__.py` | Risk package marker | yes | complete |
-| `risk/models.py` | Risk input and decision models | yes | not_started |
-| `risk/anti_rug.py` | Anti-rug veto checks | yes | not_started |
-| `risk/limits.py` | Exposure and bankroll limits | yes | not_started |
-| `risk/engine.py` | Final deterministic validator | yes | not_started |
+| `risk/models.py` | Risk input and decision models | yes | complete |
+| `risk/anti_rug.py` | Anti-rug veto checks | yes | complete |
+| `risk/limits.py` | Exposure and bankroll limits | yes | complete |
+| `risk/engine.py` | Final deterministic validator | yes | complete |
 | `prompts/master_system_prompt.md` | Bounded research system prompt | yes | complete |
 | `prompts/output_schema.json` | Research output schema | yes | complete |
 | `prompts/system_research.md` | Safe system prompt template | no | not_started |
@@ -83,12 +83,12 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/conftest.py` | Shared test fixtures | yes | not_started |
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
 | `tests/unit/test_results.py` | Shared result object unit tests | yes | complete |
-| `tests/unit/test_risk_engine.py` | Risk engine unit tests | yes | not_started |
-| `tests/unit/test_anti_rug.py` | Veto regression tests | yes | not_started |
+| `tests/unit/test_risk_engine.py` | Risk engine unit tests | yes | complete |
+| `tests/unit/test_anti_rug.py` | Veto regression tests | yes | complete |
 | `tests/unit/test_vector_engine.py` | Vector behavior tests | yes | not_started |
 | `tests/unit/test_toon.py` | Payload boundary tests | yes | complete |
 | `tests/integration/test_storage_schema.py` | DuckDB schema initialization flow | yes | complete |
-| `tests/integration/test_storage_flow.py` | DuckDB integration flow | yes | not_started |
+| `tests/integration/test_storage_flow.py` | DuckDB integration flow | yes | complete |
 | `tests/integration/test_simulation_flow.py` | Paper broker integration flow | yes | not_started |
 | `tests/safety/test_no_live_trading.py` | Forbidden execution regression tests | yes | not_started |
 | `tests/safety/test_no_secret_payloads.py` | Secret boundary regression tests | yes | not_started |

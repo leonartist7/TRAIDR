@@ -7,8 +7,9 @@ risk_engine:
 simulation_limits:
   starting_capital_usd: 50.0
   max_open_positions: 3
-  max_position_notional_usd: 5.0
-  max_total_asset_exposure_usd: 15.0
+  max_position_notional_usd: 10.0
+  max_total_asset_exposure_usd: 30.0
+  daily_loss_halt_usd: 5.0
   max_live_trade_notional_usd: 0.0
   max_withdrawal_notional_usd: 0.0
 
@@ -33,4 +34,3 @@ anti_rug:
     - honeypot_tax_route_or_sellability_signal
     - ambiguous_contract_pair_chain_or_provenance
     - stale_malformed_missing_or_uncertain_required_evidence
-
