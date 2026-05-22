@@ -4,7 +4,7 @@ Status values are `not_started`, `partial`, or `complete`.
 
 | Path | Purpose | MVP Required | Status |
 | --- | --- | --- | --- |
-| `README.md` | Starter overview and safety notice | yes | complete |
+| `README.md` | MVP overview, safety notice, and local commands | yes | complete |
 | `SPEC.md` | Product specification | yes | complete |
 | `AGENTS.md` | Codex repository instructions | yes | complete |
 | `BUILD_PHASES.md` | Phase ordering | yes | complete |
@@ -82,12 +82,14 @@ Status values are `not_started`, `partial`, or `complete`.
 | `utils/toon.py` | TOON payload boundary | yes | complete |
 | `memory/__init__.py` | Memory package marker | no | complete |
 | `memory/research_memory.py` | Scrubbed research memory | no | complete |
-| `scripts/run_simulation.py` | Local simulation entry point | yes | not_started |
-| `scripts/inspect_db.py` | Local DuckDB inspection helper | no | not_started |
-| `docs/architecture.md` | Architecture notes | no | not_started |
-| `docs/safety.md` | Expanded safety documentation | no | not_started |
-| `docs/decisions.md` | Architecture decision notes | no | not_started |
-| `tests/conftest.py` | Shared test fixtures | yes | not_started |
+| `scripts/run_simulation.py` | Local simulation entry point | yes | complete |
+| `scripts/inspect_db.py` | Local DuckDB inspection helper | no | complete |
+| `docs/architecture.md` | Architecture notes | no | complete |
+| `docs/safety.md` | Expanded safety documentation | no | complete |
+| `docs/decisions.md` | Architecture decision notes | no | complete |
+| `docs/final_mvp_audit.md` | Final MVP safety and readiness audit | yes | complete |
+| `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
+| `tests/conftest.py` | Shared test fixtures | yes | complete |
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
 | `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
@@ -106,7 +108,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/integration/test_storage_schema.py` | DuckDB schema initialization flow | yes | complete |
 | `tests/integration/test_storage_flow.py` | DuckDB integration flow | yes | complete |
 | `tests/integration/test_execution_flow.py` | Risk-gated execution integration flow | yes | complete |
-| `tests/integration/test_simulation_flow.py` | Paper broker integration flow | yes | not_started |
-| `tests/safety/test_no_live_trading.py` | Forbidden execution regression tests | yes | not_started |
+| `tests/integration/test_simulation_flow.py` | Paper broker integration flow | yes | complete |
+| `tests/safety/test_no_live_trading.py` | Forbidden execution regression tests | yes | complete |
 | `tests/safety/test_no_secret_payloads.py` | Secret boundary regression tests | yes | complete |
 | `tests/safety/test_insufficient_data.py` | Fail-closed data tests | yes | complete |
+| `tests/safety/test_no_llm_direct_execution.py` | Raw LLM execution boundary tests | yes | complete |
+| `tests/safety/test_anti_rug_overrides_bullish.py` | Anti-rug veto safety tests | yes | complete |

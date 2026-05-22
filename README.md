@@ -1,6 +1,6 @@
 # TRAIDR
 
-TRAIDR v3.1 is a local, simulation-first micro-cap crypto intelligence and paper-trading research engine. It is planned to combine free-source observations, deterministic feature vectors, bounded agent research, DuckDB audit storage, and a deterministic risk gate before any paper action is recorded.
+TRAIDR v3.1 is a local, simulation-first micro-cap crypto intelligence and paper-trading research engine. The MVP combines fixture-first observations, deterministic technical vectors, bounded mock agent research, DuckDB audit storage, and a deterministic risk gate before any paper action is recorded.
 
 ## Safety Warning
 
@@ -23,18 +23,26 @@ Every future `BUY` or `SELL` intent must pass deterministic risk validation befo
 
 ## Setup
 
-Setup commands will be added during the bootstrap phase.
+Use Python 3.11 for the target runtime.
 
 ```bash
-# placeholder: create a Python 3.11 environment and install local dependencies
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
 ```
 
-## Run
+## Run Simulation
 
-The local simulation command will be added after the simulation broker exists.
+Run one offline fixture simulation. It uses in-memory DuckDB by default and never calls a network API.
 
 ```bash
-# placeholder: run the local simulation research loop
+python scripts/run_simulation.py
+```
+
+To inspect a local DuckDB file created at the configured storage path:
+
+```bash
+python scripts/inspect_db.py
 ```
 
 ## Test
@@ -51,7 +59,7 @@ See `docs/graphify.md` for the optional Codex and PowerShell workflow.
 
 ## Architecture Summary
 
-TRAIDR is planned around explicit boundaries:
+TRAIDR uses explicit boundaries:
 
 1. Free data adapters collect source observations.
 2. The data pipeline validates freshness, shape, provenance, and confidence.
@@ -61,3 +69,16 @@ TRAIDR is planned around explicit boundaries:
 6. The simulation broker records paper-only portfolio changes in DuckDB.
 
 See `SPEC.md`, `SAFETY_RULES.md`, and `IMPLEMENTATION_PLAN.md` before implementing runtime modules.
+
+The MVP implementation is described further in `docs/architecture.md`, `docs/safety.md`, and `docs/decisions.md`.
+
+## Not Implemented
+
+- Live trading, exchange order routing, and live market loops.
+- Withdrawals, transfers, bridging, custody, signing, or private-key handling.
+- Real LLM provider calls.
+- Paid APIs or key-required source adapters.
+
+## Next Roadmap
+
+The next safe increments are richer fixture and adapter coverage, config loading for local operator settings, portfolio snapshots, and deeper research reporting while preserving the deterministic risk and simulation boundaries.
