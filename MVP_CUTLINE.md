@@ -5,7 +5,7 @@
 Day-1 MVP means a local simulation path that is safe before it is clever.
 
 - Python 3.11 project bootstrap.
-- Validated settings with simulation as the only permitted MVP mode.
+- YAML settings and risk policy with simulation as the only permitted MVP mode.
 - `$50` simulated starting capital.
 - DuckDB local persistence for core audit records.
 - Deterministic intent, risk decision, and simulated broker contracts.
@@ -42,6 +42,13 @@ The following cannot be replaced by optimistic placeholders:
 - `INSUFFICIENT_DATA` for missing, stale, malformed, contradictory, or uncertain required data.
 - Broker rejection of unapproved instructions.
 
+## Stabilization Deferrals
+
+The implemented MVP names are authoritative for this cutline:
+
+- `config/settings.yaml` and `config/risk.yaml` cover the current safe local settings and deterministic risk policy. `config/settings.py`, `config/defaults.toml`, and `config/risk_limits.toml` are deferred post-MVP configuration loader/name variants.
+- `execution/portfolio_state.py` is the active paper ledger used by the simulation broker. `execution/portfolio.py` is deferred rather than duplicated during stabilization.
+
 ## Deferred to Phase 2
 
 Here `Phase 2` means the post-MVP product increment, not `BUILD_PHASES.md` Phase 2 core utilities.
@@ -60,4 +67,3 @@ Here `Phase 2` means the post-MVP product increment, not `BUILD_PHASES.md` Phase
 - Withdrawals.
 - Private-key handling.
 - LLM direct order execution.
-

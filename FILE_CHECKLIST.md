@@ -26,9 +26,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `config/wallet_filters.yaml` | On-chain observation filter defaults | no | complete |
 | `config/data_sources.yaml` | Free-source and fixture source policy | yes | complete |
 | `config/exchanges.yaml` | Paper broker target policy | yes | complete |
-| `config/settings.py` | Validated settings loader | yes | not_started |
-| `config/defaults.toml` | Safe simulation defaults | yes | not_started |
-| `config/risk_limits.toml` | Editable risk limit defaults | yes | not_started |
+| `config/settings.py` | Deferred post-MVP validated settings loader | no | not_started |
+| `config/defaults.toml` | Deferred config-name variant; MVP uses YAML defaults | no | not_started |
+| `config/risk_limits.toml` | Deferred config-name variant; MVP uses `config/risk.yaml` | no | not_started |
 | `data_pipeline/__init__.py` | Data pipeline package marker | yes | complete |
 | `data_pipeline/contracts.py` | Snapshot and adapter contracts | yes | complete |
 | `data_pipeline/validation.py` | Freshness and shape validation | yes | complete |
@@ -46,7 +46,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `onchain/goat_adapter.py` | Optional GOAT SDK data adapter | no | complete |
 | `execution/__init__.py` | Execution package marker | yes | complete |
 | `execution/models.py` | Approved simulation instruction models | yes | complete |
-| `execution/portfolio.py` | Simulated cash and holdings ledger | yes | not_started |
+| `execution/portfolio.py` | Deferred name variant; MVP ledger is `execution/portfolio_state.py` | no | not_started |
 | `execution/portfolio_state.py` | Simulated cash and holdings state ledger | yes | complete |
 | `execution/order_validator.py` | Risk-gated paper order validator | yes | complete |
 | `execution/slippage.py` | Deterministic paper slippage and partial fills | yes | complete |
@@ -88,6 +88,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/safety.md` | Expanded safety documentation | no | complete |
 | `docs/decisions.md` | Architecture decision notes | no | complete |
 | `docs/final_mvp_audit.md` | Final MVP safety and readiness audit | yes | complete |
+| `docs/STABILIZATION_REPORT.md` | Stabilization verification and deferral report | yes | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
 | `tests/conftest.py` | Shared test fixtures | yes | complete |
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
@@ -114,3 +115,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/safety/test_insufficient_data.py` | Fail-closed data tests | yes | complete |
 | `tests/safety/test_no_llm_direct_execution.py` | Raw LLM execution boundary tests | yes | complete |
 | `tests/safety/test_anti_rug_overrides_bullish.py` | Anti-rug veto safety tests | yes | complete |
+
+## Stabilization Deferrals
+
+- The MVP reads safe YAML config artifacts directly: `config/settings.yaml` and `config/risk.yaml`. A Python settings loader and TOML config-name variants remain post-MVP work.
+- The implemented simulation ledger is `execution/portfolio_state.py`; `execution/portfolio.py` is not required for the MVP and stays deferred instead of duplicating the active ledger.

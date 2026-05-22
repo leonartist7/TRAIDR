@@ -39,16 +39,17 @@ Run one offline fixture simulation. It uses in-memory DuckDB by default and neve
 python scripts/run_simulation.py
 ```
 
-To inspect a local DuckDB file created at the configured storage path:
+To write the fixture paper records to the configured local DuckDB path and inspect them:
 
 ```bash
+python scripts/run_simulation.py --database data/traidr.duckdb
 python scripts/inspect_db.py
 ```
 
 ## Test
 
 ```bash
-pytest
+python -m pytest
 ```
 
 ## Optional Graphify Analysis

@@ -28,7 +28,7 @@ The safety-critical path is configs -> utilities -> risk engine -> simulation br
 
 | Planned File or Group | Depends On | Blocks |
 | --- | --- | --- |
-| `config/settings.py` | Bootstrap | Risk limits, broker defaults, adapter policies |
+| `config/settings.yaml` + `config/risk.yaml` | Bootstrap | Risk limits, broker defaults, adapter policies |
 | `utils/clocks.py` | Bootstrap | Freshness validation |
 | `utils/results.py` | Bootstrap | Shared `INSUFFICIENT_DATA` and reason semantics |
 | `utils/toon.py` | Utility contracts | Safe agent payloads |
@@ -69,9 +69,9 @@ After bootstrap and settings contracts exist:
 ## File Dependency Sketch
 
 ```text
-config/settings.py
+config/settings.yaml + config/risk.yaml
   -> risk/limits.py
-  -> execution/portfolio.py
+  -> execution/portfolio_state.py
   -> data_pipeline/source_registry.py
 
 utils/results.py + utils/clocks.py
@@ -92,4 +92,3 @@ technicals/vector_engine.py + utils/toon.py
   -> agents/llm_gateway.py
   -> agents/orchestrator.py
 ```
-

@@ -121,9 +121,9 @@ Safety is enforced by deterministic code and explicit data contracts:
 |-- pyproject.toml
 |-- config/
 |   |-- __init__.py
-|   |-- settings.py
-|   |-- defaults.toml
-|   `-- risk_limits.toml
+|   |-- settings.yaml
+|   |-- risk.yaml
+|   `-- logging.yaml
 |-- data_pipeline/
 |   |-- __init__.py
 |   |-- contracts.py
@@ -146,7 +146,7 @@ Safety is enforced by deterministic code and explicit data contracts:
 |   |-- __init__.py
 |   |-- models.py
 |   |-- simulation_broker.py
-|   |-- portfolio.py
+|   |-- portfolio_state.py
 |   `-- testnet_boundary.py
 |-- risk/
 |   |-- __init__.py
