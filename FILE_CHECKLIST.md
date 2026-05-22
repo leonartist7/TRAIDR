@@ -69,8 +69,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `sentiment/contracts.py` | Sentiment feature contracts | no | not_started |
 | `sentiment/features.py` | Optional free sentiment features | no | not_started |
 | `technicals/__init__.py` | Technicals package marker | yes | complete |
-| `technicals/indicators.py` | Deterministic indicators | yes | not_started |
-| `technicals/vector_engine.py` | Feature vector builder | yes | not_started |
+| `technicals/indicators.py` | Deterministic indicators | yes | complete |
+| `technicals/vector_engine.py` | Feature vector builder | yes | complete |
 | `storage/__init__.py` | Storage package marker | yes | complete |
 | `storage/duckdb_store.py` | DuckDB lifecycle helpers | yes | complete |
 | `storage/schema.py` | Local schema initialization | yes | complete |
@@ -95,7 +95,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_simulation_broker.py` | Paper broker unit tests | yes | complete |
 | `tests/unit/test_trailing_stop.py` | Trailing stop unit tests | yes | complete |
 | `tests/unit/test_take_profit.py` | Take-profit unit tests | yes | complete |
-| `tests/unit/test_vector_engine.py` | Vector behavior tests | yes | not_started |
+| `tests/unit/test_vector_engine.py` | Vector behavior tests | yes | complete |
 | `tests/unit/test_toon.py` | Payload boundary tests | yes | complete |
 | `tests/integration/test_storage_schema.py` | DuckDB schema initialization flow | yes | complete |
 | `tests/integration/test_storage_flow.py` | DuckDB integration flow | yes | complete |
