@@ -48,6 +48,29 @@ python scripts/run_simulation.py --database data/traidr.duckdb
 python scripts/inspect_db.py
 ```
 
+## CLI
+
+Install the local command center:
+
+```bash
+python -m pip install -e .
+```
+
+Examples:
+
+```bash
+traidr status
+traidr simulate
+traidr inspect
+traidr radar
+traidr report --type daily
+traidr alerts
+traidr dashboard
+traidr scheduler-once
+```
+
+`traidr dashboard` prints the Streamlit launch command instead of opening it automatically. See `docs/cli.md`.
+
 ## Dashboard
 
 Run the read-only local dashboard after creating a local DuckDB file:

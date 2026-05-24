@@ -28,14 +28,8 @@ from technicals.vector_engine import build_technical_vector
 NOW = datetime(2026, 5, 22, 12, 0, tzinfo=timezone.utc)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Run one offline TRAIDR paper simulation.")
-    parser.add_argument(
-        "--database",
-        default=":memory:",
-        help="DuckDB target for paper records; defaults to an in-memory database.",
-    )
-    args = parser.parse_args()
+def run_simulation(database: str = ":memory:") -> dict[str, object]:
+    """Run the deterministic offline paper-simulation path and return a summary."""
 
     snapshot = _fixture_snapshot()
     vector_result = build_technical_vector(
@@ -43,10 +37,24 @@ def main() -> int:
         candles=_fixture_candles(),
     )
     if not vector_result.ok or vector_result.value is None:
-        print("Simulation stopped: deterministic fixture vector is insufficient.")
-        return 1
+        return {
+            "ok": False,
+            "mode": "simulation only",
+            "database": database,
+            "pair_id": snapshot.identity.pair_id,
+            "vector_status": vector_result.status.value,
+            "intent": "INSUFFICIENT_DATA",
+            "risk_status": "NOT_RUN",
+            "risk_reasons": list(vector_result.reason_codes),
+            "execution_status": "NOT_EXECUTED",
+            "execution_reasons": list(vector_result.reason_codes),
+            "fill_id": "none",
+            "stored_orders": 0,
+            "stored_fills": 0,
+            "stored_audit_events": 0,
+        }
 
-    with DuckDBStore(args.database) as store:
+    with DuckDBStore(database) as store:
         initialize_schema(store.connection)
         broker = SimulationBroker(
             repository=SimulationRepository(store.connection),
@@ -86,17 +94,51 @@ def main() -> int:
     execution_reasons = execution.reason_codes if execution else result.reason_codes
     fill_id = execution.fill.fill_id if execution and execution.fill else "none"
 
+    return {
+        "ok": True,
+        "mode": "simulation only",
+        "database": database,
+        "pair_id": snapshot.identity.pair_id,
+        "vector_status": vector_result.status.value,
+        "intent": result.intent.action.value,
+        "risk_status": risk_status,
+        "risk_reasons": list(risk_reasons),
+        "execution_status": execution_status,
+        "execution_reasons": list(execution_reasons),
+        "fill_id": fill_id,
+        "stored_orders": counts[0],
+        "stored_fills": counts[1],
+        "stored_audit_events": counts[2],
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run one offline TRAIDR paper simulation.")
+    parser.add_argument(
+        "--database",
+        default=":memory:",
+        help="DuckDB target for paper records; defaults to an in-memory database.",
+    )
+    args = parser.parse_args()
+
+    summary = run_simulation(args.database)
+
     print("TRAIDR local simulation summary")
-    print("Mode: simulation only")
-    print(f"Database: {args.database}")
-    print(f"Pair: {snapshot.identity.pair_id}")
-    print(f"Vector status: {vector_result.status.value}")
-    print(f"Intent: {result.intent.action.value}")
-    print(f"Risk: {risk_status} ({', '.join(risk_reasons)})")
-    print(f"Execution: {execution_status} ({', '.join(execution_reasons)})")
-    print(f"Paper fill id: {fill_id}")
-    print(f"Stored records: orders={counts[0]} fills={counts[1]} audit_events={counts[2]}")
-    return 0
+    print(f"Mode: {summary['mode']}")
+    print(f"Database: {summary['database']}")
+    print(f"Pair: {summary['pair_id']}")
+    print(f"Vector status: {summary['vector_status']}")
+    print(f"Intent: {summary['intent']}")
+    print(f"Risk: {summary['risk_status']} ({', '.join(summary['risk_reasons'])})")
+    print(f"Execution: {summary['execution_status']} ({', '.join(summary['execution_reasons'])})")
+    print(f"Paper fill id: {summary['fill_id']}")
+    print(
+        "Stored records: "
+        f"orders={summary['stored_orders']} "
+        f"fills={summary['stored_fills']} "
+        f"audit_events={summary['stored_audit_events']}"
+    )
+    return 0 if summary["ok"] else 1
 
 
 def _fixture_snapshot():

@@ -29,6 +29,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `config/settings.py` | Deferred post-MVP validated settings loader | no | not_started |
 | `config/defaults.toml` | Deferred config-name variant; MVP uses YAML defaults | no | not_started |
 | `config/risk_limits.toml` | Deferred config-name variant; MVP uses `config/risk.yaml` | no | not_started |
+| `cli/__init__.py` | Operator CLI package marker | no | complete |
+| `cli/main.py` | TRAIDR argparse command entry point | no | complete |
+| `cli/commands.py` | Local command center implementations | no | complete |
+| `cli/formatters.py` | Terminal output formatting helpers | no | complete |
 | `data_pipeline/__init__.py` | Data pipeline package marker | yes | complete |
 | `data_pipeline/contracts.py` | Snapshot and adapter contracts | yes | complete |
 | `data_pipeline/validation.py` | Freshness and shape validation | yes | complete |
@@ -132,6 +136,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/final_mvp_audit.md` | Final MVP safety and readiness audit | yes | complete |
 | `docs/STABILIZATION_REPORT.md` | Stabilization verification and deferral report | yes | complete |
 | `docs/dashboard.md` | Read-only Streamlit dashboard usage | no | complete |
+| `docs/cli.md` | Operator CLI usage and safety notes | no | complete |
 | `docs/market_intelligence.md` | Personal market intelligence architecture | no | complete |
 | `docs/notifications.md` | Local and optional notification boundaries | no | complete |
 | `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
@@ -141,6 +146,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `dashboard/queries.py` | Read-only DuckDB dashboard queries | no | complete |
 | `tests/conftest.py` | Shared test fixtures | yes | complete |
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
+| `tests/unit/test_cli_commands.py` | Operator CLI command tests | no | complete |
 | `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |
 | `tests/unit/test_coingecko_adapter.py` | CoinGecko read-only adapter tests | no | complete |
 | `tests/unit/test_defillama_adapter.py` | DefiLlama read-only adapter tests | no | complete |
