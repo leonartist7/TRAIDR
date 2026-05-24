@@ -101,7 +101,11 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/decisions.md` | Architecture decision notes | no | complete |
 | `docs/final_mvp_audit.md` | Final MVP safety and readiness audit | yes | complete |
 | `docs/STABILIZATION_REPORT.md` | Stabilization verification and deferral report | yes | complete |
+| `docs/dashboard.md` | Read-only Streamlit dashboard usage | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
+| `dashboard/app.py` | Read-only Streamlit dashboard entry point | no | complete |
+| `dashboard/components.py` | Dashboard display components | no | complete |
+| `dashboard/queries.py` | Read-only DuckDB dashboard queries | no | complete |
 | `tests/conftest.py` | Shared test fixtures | yes | complete |
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
 | `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |

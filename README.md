@@ -46,6 +46,17 @@ python scripts/run_simulation.py --database data/traidr.duckdb
 python scripts/inspect_db.py
 ```
 
+## Dashboard
+
+Run the read-only local dashboard after creating a local DuckDB file:
+
+```bash
+python scripts/run_simulation.py --database data/traidr.duckdb
+python -m streamlit run dashboard/app.py
+```
+
+See `docs/dashboard.md` for details.
+
 ## Test
 
 ```bash
