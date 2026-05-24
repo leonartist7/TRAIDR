@@ -35,6 +35,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `data_pipeline/normalization.py` | Source normalization helpers | yes | complete |
 | `data_pipeline/source_registry.py` | Free-source adapter registry | yes | complete |
 | `data_pipeline/dexscreener_adapter.py` | Optional DexScreener market adapter | no | complete |
+| `data_pipeline/coingecko_adapter.py` | Optional read-only CoinGecko market adapter | no | complete |
+| `data_pipeline/defillama_adapter.py` | Optional read-only DefiLlama market adapter | no | complete |
+| `data_pipeline/live_market_loader.py` | Optional read-only market source loader | no | complete |
 | `agents/__init__.py` | Agents package marker | yes | complete |
 | `agents/intents.py` | Bounded intent models | yes | complete |
 | `agents/orchestrator.py` | Research and risk routing | yes | complete |
@@ -93,6 +96,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/conftest.py` | Shared test fixtures | yes | complete |
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
 | `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |
+| `tests/unit/test_coingecko_adapter.py` | CoinGecko read-only adapter tests | no | complete |
+| `tests/unit/test_defillama_adapter.py` | DefiLlama read-only adapter tests | no | complete |
+| `tests/unit/test_live_market_loader.py` | Optional market loader tests | no | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
 | `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |
 | `tests/unit/test_intents.py` | Strict bounded intent parser tests | yes | complete |
