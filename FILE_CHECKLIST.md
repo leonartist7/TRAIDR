@@ -53,6 +53,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `execution/portfolio_state.py` | Simulated cash and holdings state ledger | yes | complete |
 | `execution/order_validator.py` | Risk-gated paper order validator | yes | complete |
 | `execution/slippage.py` | Deterministic paper slippage and partial fills | yes | complete |
+| `execution/liquidity_depth.py` | Simulation-only liquidity depth and size impact model | no | complete |
+| `execution/gap_risk.py` | Simulation-only stop-loss gap risk model | no | complete |
+| `execution/rug_crash_model.py` | Simulation-only liquidity drain and rug crash model | no | complete |
 | `execution/trailing_stop.py` | Five percent simulated trailing stop | yes | complete |
 | `execution/take_profit.py` | Twenty percent simulated take-profit target | yes | complete |
 | `execution/audit.py` | Simulation execution audit bridge | yes | complete |
@@ -108,6 +111,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_risk_engine.py` | Risk engine unit tests | yes | complete |
 | `tests/unit/test_anti_rug.py` | Veto regression tests | yes | complete |
 | `tests/unit/test_simulation_broker.py` | Paper broker unit tests | yes | complete |
+| `tests/unit/test_liquidity_depth.py` | Liquidity depth model tests | no | complete |
+| `tests/unit/test_gap_risk.py` | Gap risk model tests | no | complete |
+| `tests/unit/test_rug_crash_model.py` | Rug crash model tests | no | complete |
 | `tests/unit/test_trailing_stop.py` | Trailing stop unit tests | yes | complete |
 | `tests/unit/test_take_profit.py` | Take-profit unit tests | yes | complete |
 | `tests/unit/test_vector_engine.py` | Vector behavior tests | yes | complete |
