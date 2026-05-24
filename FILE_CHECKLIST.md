@@ -43,6 +43,17 @@ Status values are `not_started`, `partial`, or `complete`.
 | `agents/orchestrator.py` | Research and risk routing | yes | complete |
 | `agents/llm_gateway.py` | Scrubbed LLM boundary | yes | complete |
 | `agents/research_agent.py` | Research intent producer | no | complete |
+| `agents/macro_agent.py` | Structured macro context analysis agent | no | complete |
+| `agents/news_agent.py` | Structured news context analysis agent | no | complete |
+| `agents/onchain_agent.py` | Structured on-chain activity analysis agent | no | complete |
+| `agents/token_safety_agent.py` | Structured token safety analysis agent | no | complete |
+| `agents/technical_agent.py` | Structured technical analysis agent | no | complete |
+| `agents/narrative_agent.py` | Structured narrative analysis agent | no | complete |
+| `agents/liquidity_agent.py` | Structured liquidity analysis agent | no | complete |
+| `agents/portfolio_risk_agent.py` | Structured portfolio risk analysis agent | no | complete |
+| `agents/opportunity_ranker.py` | Multi-agent opportunity/risk ranker | no | complete |
+| `agents/cio_agent.py` | CIO recommendation aggregator | no | complete |
+| `agents/agent_bus.py` | Structured non-executing agent bus | no | complete |
 | `onchain/__init__.py` | On-chain package marker | yes | complete |
 | `onchain/contracts.py` | On-chain observation contracts | yes | complete |
 | `onchain/rug_observations.py` | Anti-rug evidence helpers | yes | complete |
@@ -121,6 +132,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_wallet_graph.py` | Fixture wallet graph tests | no | complete |
 | `tests/unit/test_wallet_cluster_scorer.py` | Wallet graph scoring tests | no | complete |
 | `tests/unit/test_intents.py` | Strict bounded intent parser tests | yes | complete |
+| `tests/unit/test_agent_bus.py` | Multi-agent bus tests | no | complete |
+| `tests/unit/test_opportunity_ranker.py` | Opportunity ranker tests | no | complete |
+| `tests/unit/test_cio_agent.py` | CIO aggregation tests | no | complete |
 | `tests/unit/test_llm_gateway.py` | Mock LLM gateway tests | yes | complete |
 | `tests/unit/test_orchestrator.py` | Agent risk routing tests | yes | complete |
 | `tests/unit/test_results.py` | Shared result object unit tests | yes | complete |
