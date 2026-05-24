@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from data_pipeline.scan_models import MarketScanCandidate
 from agents.agent_bus import run_agent_bus
 from agents.liquidity_agent import LiquidityAgent
 from agents.technical_agent import TechnicalAgent
@@ -103,6 +105,16 @@ def radar(database: str | None = None, *, fixture: bool = False, limit: int = 10
     records = [] if fixture else _query_records(db_path, "opportunity_radar_states", limit)
     if records:
         return CommandResult(0, section("Opportunity Radar", records_table(records).splitlines()))
+    scan_candidates = [] if fixture else _latest_scan_candidates(db_path, limit)
+    if scan_candidates:
+        radar_rows = [candidate.to_dict() for candidate in scan_candidates_to_radar(scan_candidates)[:limit]]
+        return CommandResult(
+            0,
+            section(
+                "Opportunity Radar",
+                ["source: scan_evidence", *records_table(radar_rows).splitlines()],
+            ),
+        )
 
     candidates = [candidate.to_dict() for candidate in _fixture_radar()]
     return CommandResult(
@@ -330,6 +342,51 @@ def _fixture_radar():
         {"technical_momentum": 0.7, "liquidity_usd": 15000, "token_safety_clear": True},
     ).analyses
     return rank_watchlist([{"subject_id": "fixture-sol-usdc", "analyses": analyses}])
+
+
+def _latest_scan_candidates(database: Path, limit: int) -> tuple[MarketScanCandidate, ...]:
+    if not database.exists():
+        return ()
+    with DuckDBStore(database, read_only=True) as store:
+        tables = list_tables(store.connection)
+        if "evidence_snapshots" not in tables:
+            return ()
+        rows = store.execute(
+            """
+            SELECT payload_json
+            FROM evidence_snapshots
+            WHERE source_name LIKE 'market_scan:%'
+            ORDER BY collected_at DESC
+            LIMIT ?
+            """,
+            [limit],
+        ).fetchall()
+    candidates: list[MarketScanCandidate] = []
+    for (payload_json,) in rows:
+        try:
+            payload = json.loads(payload_json)
+            candidates.append(
+                MarketScanCandidate(
+                    token_pair_id=str(payload.get("token_pair_id") or payload["pair_id"]),
+                    source=str(payload["source"]),
+                    observed_at=datetime.fromisoformat(str(payload["observed_at"])),
+                    price_usd=_decimal_or_none(payload.get("price_usd")),
+                    liquidity_usd=_decimal_or_none(payload.get("liquidity_usd")),
+                    volume_24h_usd=_decimal_or_none(payload.get("volume_24h_usd")),
+                    data_quality=str(payload["data_quality"]),
+                    reason_codes=tuple(payload.get("reason_codes") or ("SCAN_EVIDENCE_LOADED",)),
+                    snapshot=None,
+                )
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return tuple(candidates)
+
+
+def _decimal_or_none(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    return Decimal(str(value))
 
 
 def _scheduler_handlers():

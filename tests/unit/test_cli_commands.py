@@ -71,6 +71,18 @@ def test_scan_fixture_outputs_candidates_and_radar(tmp_path: Path) -> None:
     assert database.exists()
 
 
+def test_radar_reads_scan_evidence_from_database(tmp_path: Path) -> None:
+    database = tmp_path / "cli-scan-radar.duckdb"
+    scan(str(database), fixture=True)
+
+    result = radar(str(database))
+
+    assert result.exit_code == 0
+    assert "source: scan_evidence" in result.output
+    assert "fixture-sol-usdc" in result.output
+    assert "can_execute_trades" in result.output
+
+
 def test_scan_real_mode_without_sources_has_no_candidates(tmp_path: Path) -> None:
     result = scan(str(tmp_path / "scan-empty.duckdb"), pair_refs=("token-a",))
 

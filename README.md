@@ -109,6 +109,7 @@ Run read-only fixture market scan and radar conversion:
 ```bash
 python -m cli.main scan --fixture
 python -m cli.main scan --fixture --database storage/duckdb/traidr_test.duckdb
+python -m cli.main radar --database storage/duckdb/traidr_test.duckdb
 ```
 
 Real-source scan mode is optional and read-only. If data sources are unavailable or return no candidates, TRAIDR returns `INSUFFICIENT_DATA` or a clean no-candidates message rather than fabricating bullish data. See `docs/market_scan.md`.
