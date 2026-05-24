@@ -15,10 +15,24 @@ uv tool install graphifyy
 graphify install --platform codex
 ```
 
+If the user Python Scripts directory is not on PATH, use the module form instead:
+
+```powershell
+python -m pip install --user graphifyy
+python -m graphify codex install
+python -m graphify update .
+```
+
 Codex skill usage may use `$graphify .` after registration. In PowerShell, use the CLI form:
 
 ```powershell
 graphify .
+```
+
+In this workspace, the verified fallback command is:
+
+```powershell
+python -m graphify update .
 ```
 
 ## Ignore Policy
@@ -37,6 +51,8 @@ logs/
 ```
 
 Keep these exclusions in place when analyzing TRAIDR. In particular, do not include local database artifacts or environment files in repository analysis payloads.
+
+`graphify-out/` is ignored by git because it is generated local analysis output. Promote only intentional summaries, such as a reviewed root `GRAPH_REPORT.md`, if a report should be versioned.
 
 ## Safety Notes
 
