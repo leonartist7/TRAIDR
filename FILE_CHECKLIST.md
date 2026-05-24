@@ -47,6 +47,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `onchain/contracts.py` | On-chain observation contracts | yes | complete |
 | `onchain/rug_observations.py` | Anti-rug evidence helpers | yes | complete |
 | `onchain/goat_adapter.py` | Optional GOAT SDK data adapter | no | complete |
+| `onchain/lp_lock_analysis.py` | LP lock status anti-rug signal helper | no | complete |
+| `onchain/holder_concentration.py` | Holder concentration anti-rug signal helper | no | complete |
+| `onchain/static_contract_risk.py` | Optional static scanner JSON anti-rug mapper | no | complete |
+| `onchain/wallet_cluster_flags.py` | Wallet cluster anti-rug signal helper | no | complete |
 | `execution/__init__.py` | Execution package marker | yes | complete |
 | `execution/models.py` | Approved simulation instruction models | yes | complete |
 | `execution/portfolio.py` | Deferred name variant; MVP ledger is `execution/portfolio_state.py` | no | not_started |
@@ -104,6 +108,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_live_market_loader.py` | Optional market loader tests | no | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
 | `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |
+| `tests/unit/test_lp_lock_analysis.py` | LP lock anti-rug signal tests | no | complete |
+| `tests/unit/test_holder_concentration.py` | Holder concentration signal tests | no | complete |
+| `tests/unit/test_static_contract_risk.py` | Static contract risk mapper tests | no | complete |
+| `tests/unit/test_wallet_cluster_flags.py` | Wallet cluster signal tests | no | complete |
 | `tests/unit/test_intents.py` | Strict bounded intent parser tests | yes | complete |
 | `tests/unit/test_llm_gateway.py` | Mock LLM gateway tests | yes | complete |
 | `tests/unit/test_orchestrator.py` | Agent risk routing tests | yes | complete |
