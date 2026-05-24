@@ -25,6 +25,11 @@ def build_parser() -> argparse.ArgumentParser:
     radar_parser.add_argument("--fixture", action="store_true", help="Use fixture radar output even if DB is empty.")
     radar_parser.add_argument("--limit", type=int, default=10)
 
+    scan_parser = subparsers.add_parser("scan", help="Run read-only market scan research.")
+    scan_parser.add_argument("--fixture", action="store_true", help="Use deterministic offline scan fixtures.")
+    scan_parser.add_argument("--pair-ref", action="append", default=[], help="Pair reference for optional real-source scan.")
+    scan_parser.add_argument("--limit", type=int, default=10)
+
     report_parser = subparsers.add_parser("report", help="Show research summaries.")
     report_parser.add_argument("--type", choices=("4h", "daily"), default="daily")
     report_parser.add_argument("--limit", type=int, default=5)
@@ -48,6 +53,13 @@ def main(argv: list[str] | None = None) -> int:
         result = commands.inspect(args.database, limit=args.limit)
     elif args.command == "radar":
         result = commands.radar(args.database, fixture=args.fixture, limit=args.limit)
+    elif args.command == "scan":
+        result = commands.scan(
+            args.database,
+            fixture=args.fixture,
+            pair_refs=tuple(args.pair_ref),
+            limit=args.limit,
+        )
     elif args.command == "report":
         result = commands.report(args.database, report_type=args.type, limit=args.limit)
     elif args.command == "alerts":

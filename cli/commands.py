@@ -13,12 +13,14 @@ from agents.liquidity_agent import LiquidityAgent
 from agents.technical_agent import TechnicalAgent
 from agents.token_safety_agent import TokenSafetyAgent
 from cli.formatters import bullet_list, key_values, records_table, section
+from data_pipeline.market_scan import scan_markets
+from radar.scan_to_radar import scan_candidates_to_radar
 from radar.opportunity_radar import rank_watchlist
 from scheduler.reports import build_research_report
 from scheduler.research_scheduler import ResearchScheduler
 from scripts.run_simulation import run_simulation
 from storage.duckdb_store import DuckDBStore
-from storage.repositories import IntelligenceRepository
+from storage.repositories import IntelligenceRepository, ResearchRepository
 from storage.schema import initialize_schema, list_tables
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -108,6 +110,64 @@ def radar(database: str | None = None, *, fixture: bool = False, limit: int = 10
         section(
             "Opportunity Radar",
             ["source: fixture", *records_table(candidates).splitlines()],
+        ),
+    )
+
+
+def scan(
+    database: str | None = None,
+    *,
+    fixture: bool = False,
+    pair_refs: tuple[str, ...] = (),
+    limit: int = 10,
+) -> CommandResult:
+    db_path = _database_path(database) if database else None
+    repository: ResearchRepository | None = None
+    store_context = DuckDBStore(db_path) if db_path is not None else None
+    if store_context is not None:
+        store = store_context.__enter__()
+        initialize_schema(store.connection)
+        repository = ResearchRepository(store.connection)
+    try:
+        result = scan_markets(
+            fixture=fixture,
+            pair_refs=pair_refs,
+            repository=repository,
+        )
+    finally:
+        if store_context is not None:
+            store_context.__exit__(None, None, None)
+
+    if not result.candidates:
+        return CommandResult(
+            0,
+            section(
+                "Market Scan",
+                [
+                    f"status: {result.status}",
+                    f"reason_codes: {', '.join(result.reason_codes)}",
+                    "No candidates found.",
+                ],
+            ),
+        )
+
+    rows = [candidate.to_dict() for candidate in result.candidates[:limit]]
+    radar_rows = [candidate.to_dict() for candidate in scan_candidates_to_radar(result.candidates)[:limit]]
+    return CommandResult(
+        0,
+        "\n\n".join(
+            (
+                section(
+                    "Market Scan",
+                    [
+                        f"status: {result.status}",
+                        f"reason_codes: {', '.join(result.reason_codes)}",
+                        f"database: {db_path or 'not persisted'}",
+                    ],
+                ),
+                section("Scan Candidates", records_table(rows).splitlines()),
+                section("Radar From Scan", records_table(radar_rows).splitlines()),
+            )
         ),
     )
 

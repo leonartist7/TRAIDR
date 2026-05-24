@@ -5,6 +5,7 @@ from cli.commands import (
     dashboard,
     inspect,
     radar,
+    scan,
     report,
     scheduler_once,
     simulate,
@@ -56,6 +57,26 @@ def test_radar_uses_fixture_when_db_has_no_radar(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "fixture-sol-usdc" in result.output
     assert "BUY_CANDIDATE" in result.output
+
+
+def test_scan_fixture_outputs_candidates_and_radar(tmp_path: Path) -> None:
+    database = tmp_path / "cli-scan.duckdb"
+
+    result = scan(str(database), fixture=True)
+
+    assert result.exit_code == 0
+    assert "Market Scan" in result.output
+    assert "fixture-sol-usdc" in result.output
+    assert "can_execute_trades" in result.output
+    assert database.exists()
+
+
+def test_scan_real_mode_without_sources_has_no_candidates(tmp_path: Path) -> None:
+    result = scan(str(tmp_path / "scan-empty.duckdb"), pair_refs=("token-a",))
+
+    assert result.exit_code == 0
+    assert "No candidates found." in result.output
+    assert "INSUFFICIENT_DATA" in result.output
 
 
 def test_report_reads_research_reports_after_scheduler_once(tmp_path: Path) -> None:
