@@ -11,6 +11,7 @@ from cli.commands import (
     scheduler_once,
     simulate,
     status,
+    token_detail,
 )
 from cli.main import main
 from notifications.models import Alert, AlertSeverity, SendResult
@@ -115,6 +116,15 @@ def test_discover_real_mode_transport_failure_fails_closed(monkeypatch) -> None:
     assert result.exit_code == 0
     assert "INSUFFICIENT_DATA" in result.output
     assert "No candidates found." in result.output
+
+
+def test_token_detail_fixture_outputs_research_card() -> None:
+    result = token_detail(fixture=True)
+
+    assert result.exit_code == 0
+    assert "Token Detail" in result.output
+    assert "fixture-sol-usdc" in result.output
+    assert "can_execute_trades: False" in result.output
 
 
 def test_report_reads_research_reports_after_scheduler_once(tmp_path: Path) -> None:

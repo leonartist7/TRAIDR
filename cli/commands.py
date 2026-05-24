@@ -26,6 +26,8 @@ from scripts.run_simulation import run_simulation
 from storage.duckdb_store import DuckDBStore
 from storage.repositories import IntelligenceRepository, ResearchRepository
 from storage.schema import initialize_schema, list_tables
+from token_detail.detail_builder import build_token_detail
+from token_detail.formatters import format_token_detail
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS_PATH = ROOT / "config" / "settings.yaml"
@@ -286,6 +288,37 @@ def discover(
             )
         ),
     )
+
+
+def token_detail(
+    database: str | None = None,
+    *,
+    fixture: bool = False,
+    pair_ref: str | None = None,
+    source: str | None = None,
+) -> CommandResult:
+    if not fixture and (source != "dexscreener" or not pair_ref):
+        report = build_token_detail()
+        return CommandResult(0, format_token_detail(report))
+
+    db_path = _database_path(database) if database else None
+    repository: ResearchRepository | None = None
+    store_context = DuckDBStore(db_path) if db_path is not None else None
+    if store_context is not None:
+        store = store_context.__enter__()
+        initialize_schema(store.connection)
+        repository = ResearchRepository(store.connection)
+    try:
+        report = build_token_detail(
+            fixture=fixture,
+            pair_ref=pair_ref,
+            source=source,
+            repository=repository,
+        )
+    finally:
+        if store_context is not None:
+            store_context.__exit__(None, None, None)
+    return CommandResult(0, format_token_detail(report))
 
 
 def report(database: str | None = None, *, report_type: str = "daily", limit: int = 5) -> CommandResult:

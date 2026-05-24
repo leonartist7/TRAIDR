@@ -67,6 +67,7 @@ traidr report --type daily
 traidr alerts
 traidr scan --fixture
 traidr discover --fixture
+traidr token --fixture
 traidr dashboard
 traidr scheduler-once
 ```
@@ -127,6 +128,18 @@ python -m cli.main discover --source dexscreener --limit 20
 ```
 
 Discovery is research-only and cannot execute trades. See `docs/token_discovery.md`.
+
+## Token Detail
+
+Generate a read-only local token intelligence card:
+
+```bash
+python -m cli.main token --fixture
+python -m cli.main token --pair-ref solana/PAIR_ADDRESS --source dexscreener
+python -m cli.main token --pair-ref solana/PAIR_ADDRESS --source dexscreener --database storage/duckdb/traidr_token.duckdb
+```
+
+Token detail cards include market metrics, radar state, anti-rug evidence status, reason codes, and plain-English research notes. They are research-only and always include `can_execute_trades: False`. See `docs/token_detail.md`.
 
 ## Test
 

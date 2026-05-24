@@ -47,5 +47,6 @@ packages = [
     "sentiment",
     "storage",
     "technicals",
+    "token_detail",
     "utils",
 ]

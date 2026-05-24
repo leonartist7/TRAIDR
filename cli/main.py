@@ -36,6 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
     discover_parser.add_argument("--source", choices=("dexscreener",), help="Optional real read-only discovery source.")
     discover_parser.add_argument("--limit", type=int, default=20)
 
+    token_parser = subparsers.add_parser("token", help="Show a read-only token detail intelligence card.")
+    token_parser.add_argument("--fixture", action="store_true", help="Use deterministic offline token detail fixture.")
+    token_parser.add_argument("--pair-ref", help="Pair reference for optional real-source token detail.")
+    token_parser.add_argument("--source", choices=("dexscreener",), help="Optional real read-only token detail source.")
+
     report_parser = subparsers.add_parser("report", help="Show research summaries.")
     report_parser.add_argument("--type", choices=("4h", "daily"), default="daily")
     report_parser.add_argument("--limit", type=int, default=5)
@@ -73,6 +78,13 @@ def main(argv: list[str] | None = None) -> int:
             fixture=args.fixture,
             source=args.source,
             limit=args.limit,
+        )
+    elif args.command == "token":
+        result = commands.token_detail(
+            args.database,
+            fixture=args.fixture,
+            pair_ref=args.pair_ref,
+            source=args.source,
         )
     elif args.command == "report":
         result = commands.report(args.database, report_type=args.type, limit=args.limit)
