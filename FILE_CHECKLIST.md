@@ -142,6 +142,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/cli.md` | Operator CLI usage and safety notes | no | complete |
 | `docs/market_intelligence.md` | Personal market intelligence architecture | no | complete |
 | `docs/market_scan.md` | Read-only market scan usage | no | complete |
+| `docs/DEXSCREENER_SCAN_REPORT.md` | Read-only DexScreener scan report | no | complete |
 | `docs/notifications.md` | Local and optional notification boundaries | no | complete |
 | `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
@@ -154,8 +155,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |
 | `tests/unit/test_coingecko_adapter.py` | CoinGecko read-only adapter tests | no | complete |
 | `tests/unit/test_defillama_adapter.py` | DefiLlama read-only adapter tests | no | complete |
+| `tests/unit/test_dexscreener_real_shape.py` | DexScreener response-shape normalization tests | no | complete |
 | `tests/unit/test_live_market_loader.py` | Optional market loader tests | no | complete |
 | `tests/unit/test_market_scan.py` | Read-only market scan tests | no | complete |
+| `tests/unit/test_scan_command_real_mode.py` | CLI real scan mode tests with mocked source | no | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
 | `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |
 | `tests/unit/test_lp_lock_analysis.py` | LP lock anti-rug signal tests | no | complete |

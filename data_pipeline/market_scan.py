@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from data_pipeline.contracts import AdapterResult, NormalizedMarketSnapshot
-from data_pipeline.dexscreener_adapter import DexScreenerAdapter
+from data_pipeline.dexscreener_adapter import DexScreenerAdapter, default_dexscreener_transport
 from data_pipeline.live_market_loader import LiveMarketLoader
 from data_pipeline.normalization import normalize_market_record
 from data_pipeline.scan_models import MarketScanCandidate, MarketScanResult
@@ -112,6 +112,10 @@ def dexscreener_loader(transport, *, now: datetime | None = None) -> LiveMarketL
     registry = SourceRegistry()
     registry.register(DexScreenerAdapter(transport, now=now))
     return LiveMarketLoader(registry)
+
+
+def real_dexscreener_loader(*, now: datetime | None = None) -> LiveMarketLoader:
+    return dexscreener_loader(default_dexscreener_transport, now=now)
 
 
 def _scan_raw_records(

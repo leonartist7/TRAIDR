@@ -109,6 +109,7 @@ Run read-only fixture market scan and radar conversion:
 ```bash
 python -m cli.main scan --fixture
 python -m cli.main scan --fixture --database storage/duckdb/traidr_test.duckdb
+python -m cli.main scan --source dexscreener --pair-ref solana/PAIR_ADDRESS
 python -m cli.main radar --database storage/duckdb/traidr_test.duckdb
 ```
 

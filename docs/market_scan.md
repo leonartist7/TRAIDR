@@ -16,11 +16,15 @@ Persist fixture scan evidence:
 python -m cli.main scan --fixture --database storage/duckdb/traidr_test.duckdb
 ```
 
-Optional real-source scan requires explicit pair references and configured/injected adapter paths. If no source can provide data, TRAIDR returns `INSUFFICIENT_DATA` and prints a clean no-candidates message.
+Optional real-source scan requires an explicit source and pair reference. DexScreener pair references use `<chain>/<pairAddress>`.
 
 ```powershell
-python -m cli.main scan --pair-ref solana:example
+python -m cli.main scan --source dexscreener --pair-ref solana/PAIR_ADDRESS
+python -m cli.main scan --source dexscreener --pair-ref solana/PAIR_ADDRESS --database storage/duckdb/traidr_scan_test.duckdb
+python -m cli.main radar --database storage/duckdb/traidr_scan_test.duckdb
 ```
+
+If `--source` is omitted and `--fixture` is false, TRAIDR returns `INSUFFICIENT_DATA` with instructions. If DexScreener is unavailable, returns an HTTP error, or returns missing price/liquidity/volume fields, TRAIDR returns `INSUFFICIENT_DATA` rather than fabricating candidate data.
 
 ## Output Fields
 

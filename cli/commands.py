@@ -15,7 +15,7 @@ from agents.liquidity_agent import LiquidityAgent
 from agents.technical_agent import TechnicalAgent
 from agents.token_safety_agent import TokenSafetyAgent
 from cli.formatters import bullet_list, key_values, records_table, section
-from data_pipeline.market_scan import scan_markets
+from data_pipeline.market_scan import real_dexscreener_loader, scan_markets
 from radar.scan_to_radar import scan_candidates_to_radar
 from radar.opportunity_radar import rank_watchlist
 from scheduler.reports import build_research_report
@@ -130,9 +130,37 @@ def scan(
     database: str | None = None,
     *,
     fixture: bool = False,
+    source: str | None = None,
     pair_refs: tuple[str, ...] = (),
     limit: int = 10,
 ) -> CommandResult:
+    if not fixture and source is None:
+        return CommandResult(
+            0,
+            section(
+                "Market Scan",
+                [
+                    "status: INSUFFICIENT_DATA",
+                    "reason_codes: SCAN_SOURCE_REQUIRED",
+                    "No candidates found.",
+                    "Use `--fixture` for offline scan or `--source dexscreener --pair-ref <chain>/<pairAddress>` for read-only DexScreener scan.",
+                ],
+            ),
+        )
+    if not fixture and source != "dexscreener":
+        return CommandResult(
+            0,
+            section(
+                "Market Scan",
+                [
+                    "status: INSUFFICIENT_DATA",
+                    f"reason_codes: SCAN_SOURCE_UNSUPPORTED:{source}",
+                    "No candidates found.",
+                    "Supported real read-only source: dexscreener.",
+                ],
+            ),
+        )
+
     db_path = _database_path(database) if database else None
     repository: ResearchRepository | None = None
     store_context = DuckDBStore(db_path) if db_path is not None else None
@@ -144,6 +172,8 @@ def scan(
         result = scan_markets(
             fixture=fixture,
             pair_refs=pair_refs,
+            source_names=(source,) if source else ("dexscreener", "coingecko", "defillama"),
+            loader=real_dexscreener_loader() if source == "dexscreener" else None,
             repository=repository,
         )
     finally:

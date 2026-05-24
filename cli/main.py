@@ -27,6 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     scan_parser = subparsers.add_parser("scan", help="Run read-only market scan research.")
     scan_parser.add_argument("--fixture", action="store_true", help="Use deterministic offline scan fixtures.")
+    scan_parser.add_argument("--source", choices=("dexscreener",), help="Optional real read-only market source.")
     scan_parser.add_argument("--pair-ref", action="append", default=[], help="Pair reference for optional real-source scan.")
     scan_parser.add_argument("--limit", type=int, default=10)
 
@@ -57,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         result = commands.scan(
             args.database,
             fixture=args.fixture,
+            source=args.source,
             pair_refs=tuple(args.pair_ref),
             limit=args.limit,
         )

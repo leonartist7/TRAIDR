@@ -8,6 +8,7 @@ from datetime import datetime
 from data_pipeline.coingecko_adapter import CoinGeckoAdapter, Transport as CoinGeckoTransport
 from data_pipeline.contracts import AdapterResult, NormalizedMarketSnapshot
 from data_pipeline.defillama_adapter import DefiLlamaAdapter, Transport as DefiLlamaTransport
+from data_pipeline.dexscreener_adapter import DexScreenerAdapter, Transport as DexScreenerTransport
 from data_pipeline.source_registry import SourceRegistry
 
 
@@ -39,11 +40,14 @@ class LiveMarketLoader:
     def from_optional_transports(
         cls,
         *,
+        dexscreener_transport: DexScreenerTransport | None = None,
         coingecko_transport: CoinGeckoTransport | None = None,
         defillama_transport: DefiLlamaTransport | None = None,
         now: datetime | None = None,
     ) -> "LiveMarketLoader":
         registry = SourceRegistry()
+        if dexscreener_transport is not None:
+            registry.register(DexScreenerAdapter(dexscreener_transport, now=now))
         if coingecko_transport is not None:
             registry.register(CoinGeckoAdapter(coingecko_transport, now=now))
         if defillama_transport is not None:
