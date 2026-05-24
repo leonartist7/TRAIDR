@@ -66,6 +66,7 @@ traidr radar
 traidr report --type daily
 traidr alerts
 traidr scan --fixture
+traidr discover --fixture
 traidr dashboard
 traidr scheduler-once
 ```
@@ -114,6 +115,18 @@ python -m cli.main radar --database storage/duckdb/traidr_test.duckdb
 ```
 
 Real-source scan mode is optional and read-only. If data sources are unavailable or return no candidates, TRAIDR returns `INSUFFICIENT_DATA` or a clean no-candidates message rather than fabricating bullish data. See `docs/market_scan.md`.
+
+## Token Discovery
+
+Run offline discovery:
+
+```bash
+python -m cli.main discover --fixture
+python -m cli.main discover --fixture --database storage/duckdb/traidr_discovery.duckdb
+python -m cli.main discover --source dexscreener --limit 20
+```
+
+Discovery is research-only and cannot execute trades. See `docs/token_discovery.md`.
 
 ## Test
 

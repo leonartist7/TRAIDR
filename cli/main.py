@@ -31,6 +31,11 @@ def build_parser() -> argparse.ArgumentParser:
     scan_parser.add_argument("--pair-ref", action="append", default=[], help="Pair reference for optional real-source scan.")
     scan_parser.add_argument("--limit", type=int, default=10)
 
+    discover_parser = subparsers.add_parser("discover", help="Discover read-only token candidates.")
+    discover_parser.add_argument("--fixture", action="store_true", help="Use deterministic offline discovery fixtures.")
+    discover_parser.add_argument("--source", choices=("dexscreener",), help="Optional real read-only discovery source.")
+    discover_parser.add_argument("--limit", type=int, default=20)
+
     report_parser = subparsers.add_parser("report", help="Show research summaries.")
     report_parser.add_argument("--type", choices=("4h", "daily"), default="daily")
     report_parser.add_argument("--limit", type=int, default=5)
@@ -60,6 +65,13 @@ def main(argv: list[str] | None = None) -> int:
             fixture=args.fixture,
             source=args.source,
             pair_refs=tuple(args.pair_ref),
+            limit=args.limit,
+        )
+    elif args.command == "discover":
+        result = commands.discover(
+            args.database,
+            fixture=args.fixture,
+            source=args.source,
             limit=args.limit,
         )
     elif args.command == "report":

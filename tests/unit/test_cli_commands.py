@@ -3,6 +3,7 @@ from pathlib import Path
 from cli.commands import (
     alerts,
     dashboard,
+    discover,
     inspect,
     radar,
     scan,
@@ -89,6 +90,31 @@ def test_scan_real_mode_without_sources_has_no_candidates(tmp_path: Path) -> Non
     assert result.exit_code == 0
     assert "No candidates found." in result.output
     assert "INSUFFICIENT_DATA" in result.output
+
+
+def test_discover_fixture_outputs_candidates_and_radar(tmp_path: Path) -> None:
+    database = tmp_path / "cli-discovery.duckdb"
+
+    result = discover(str(database), fixture=True)
+
+    assert result.exit_code == 0
+    assert "Token Discovery" in result.output
+    assert "fixture-sol-usdc" in result.output
+    assert "can_execute_trades" in result.output
+    assert database.exists()
+
+
+def test_discover_real_mode_transport_failure_fails_closed(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "cli.commands.default_dexscreener_discovery_transport",
+        lambda _limit: (_ for _ in ()).throw(RuntimeError("offline")),
+    )
+
+    result = discover(source="dexscreener")
+
+    assert result.exit_code == 0
+    assert "INSUFFICIENT_DATA" in result.output
+    assert "No candidates found." in result.output
 
 
 def test_report_reads_research_reports_after_scheduler_once(tmp_path: Path) -> None:

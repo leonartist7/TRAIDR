@@ -16,6 +16,8 @@ from agents.technical_agent import TechnicalAgent
 from agents.token_safety_agent import TokenSafetyAgent
 from cli.formatters import bullet_list, key_values, records_table, section
 from data_pipeline.market_scan import real_dexscreener_loader, scan_markets
+from data_pipeline.token_discovery import default_dexscreener_discovery_transport, discover_tokens
+from radar.discovery_to_radar import discovery_candidates_to_radar
 from radar.scan_to_radar import scan_candidates_to_radar
 from radar.opportunity_radar import rank_watchlist
 from scheduler.reports import build_research_report
@@ -209,6 +211,78 @@ def scan(
                 ),
                 section("Scan Candidates", records_table(rows).splitlines()),
                 section("Radar From Scan", records_table(radar_rows).splitlines()),
+            )
+        ),
+    )
+
+
+def discover(
+    database: str | None = None,
+    *,
+    fixture: bool = False,
+    source: str | None = None,
+    limit: int = 20,
+) -> CommandResult:
+    if not fixture and source != "dexscreener":
+        return CommandResult(
+            0,
+            section(
+                "Token Discovery",
+                [
+                    "status: INSUFFICIENT_DATA",
+                    "reason_codes: DISCOVERY_SOURCE_REQUIRED",
+                    "No candidates found.",
+                    "Use `--fixture` for offline discovery or `--source dexscreener` for read-only DexScreener discovery.",
+                ],
+            ),
+        )
+    db_path = _database_path(database) if database else None
+    repository: ResearchRepository | None = None
+    store_context = DuckDBStore(db_path) if db_path is not None else None
+    if store_context is not None:
+        store = store_context.__enter__()
+        initialize_schema(store.connection)
+        repository = ResearchRepository(store.connection)
+    try:
+        result = discover_tokens(
+            fixture=fixture,
+            source=source,
+            limit=limit,
+            transport=default_dexscreener_discovery_transport if source == "dexscreener" else None,
+            repository=repository,
+        )
+    finally:
+        if store_context is not None:
+            store_context.__exit__(None, None, None)
+
+    if not result.candidates:
+        return CommandResult(
+            0,
+            section(
+                "Token Discovery",
+                [
+                    f"status: {result.status}",
+                    f"reason_codes: {', '.join(result.reason_codes)}",
+                    "No candidates found.",
+                ],
+            ),
+        )
+    rows = [candidate.to_dict() for candidate in result.candidates[:limit]]
+    radar_rows = [candidate.to_dict() for candidate in discovery_candidates_to_radar(result.candidates)[:limit]]
+    return CommandResult(
+        0,
+        "\n\n".join(
+            (
+                section(
+                    "Token Discovery",
+                    [
+                        f"status: {result.status}",
+                        f"reason_codes: {', '.join(result.reason_codes)}",
+                        f"database: {db_path or 'not persisted'}",
+                    ],
+                ),
+                section("Discovery Candidates", records_table(rows).splitlines()),
+                section("Radar From Discovery", records_table(radar_rows).splitlines()),
             )
         ),
     )

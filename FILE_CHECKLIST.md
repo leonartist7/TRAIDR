@@ -44,6 +44,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `data_pipeline/live_market_loader.py` | Optional read-only market source loader | no | complete |
 | `data_pipeline/market_scan.py` | Read-only market scan orchestration | no | complete |
 | `data_pipeline/scan_models.py` | Market scan result models | no | complete |
+| `data_pipeline/token_discovery.py` | Read-only token discovery orchestration | no | complete |
+| `data_pipeline/discovery_models.py` | Token discovery result models | no | complete |
 | `agents/__init__.py` | Agents package marker | yes | complete |
 | `agents/intents.py` | Bounded intent models | yes | complete |
 | `agents/orchestrator.py` | Research and risk routing | yes | complete |
@@ -70,6 +72,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `radar/watchlist.py` | Watchlist normalization helpers | no | complete |
 | `radar/opportunity_radar.py` | Ranked opportunity radar | no | complete |
 | `radar/scan_to_radar.py` | Convert scan candidates to radar rankings | no | complete |
+| `radar/discovery_to_radar.py` | Convert discovery candidates to radar rankings | no | complete |
 | `notifications/__init__.py` | Notification package marker | no | complete |
 | `notifications/models.py` | Alert and send result models | no | complete |
 | `notifications/history.py` | DuckDB-backed local alert history | no | complete |
@@ -143,6 +146,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/market_intelligence.md` | Personal market intelligence architecture | no | complete |
 | `docs/market_scan.md` | Read-only market scan usage | no | complete |
 | `docs/DEXSCREENER_SCAN_REPORT.md` | Read-only DexScreener scan report | no | complete |
+| `docs/token_discovery.md` | Read-only token discovery usage | no | complete |
 | `docs/notifications.md` | Local and optional notification boundaries | no | complete |
 | `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
@@ -158,6 +162,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_dexscreener_real_shape.py` | DexScreener response-shape normalization tests | no | complete |
 | `tests/unit/test_live_market_loader.py` | Optional market loader tests | no | complete |
 | `tests/unit/test_market_scan.py` | Read-only market scan tests | no | complete |
+| `tests/unit/test_token_discovery.py` | Read-only token discovery tests | no | complete |
 | `tests/unit/test_scan_command_real_mode.py` | CLI real scan mode tests with mocked source | no | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
 | `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |
@@ -176,6 +181,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_event_calendar.py` | Event calendar freshness tests | no | complete |
 | `tests/unit/test_opportunity_radar.py` | Radar state and ranking tests | no | complete |
 | `tests/unit/test_scan_to_radar.py` | Scan-to-radar conversion tests | no | complete |
+| `tests/unit/test_discovery_to_radar.py` | Discovery-to-radar conversion tests | no | complete |
 | `tests/unit/test_notifications.py` | Notification dedupe and sender tests | no | complete |
 | `tests/unit/test_scheduler.py` | Scheduler and report tests | no | complete |
 | `tests/unit/test_llm_gateway.py` | Mock LLM gateway tests | yes | complete |

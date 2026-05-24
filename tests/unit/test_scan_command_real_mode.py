@@ -53,6 +53,26 @@ def test_scan_dexscreener_network_failure_fails_closed(monkeypatch) -> None:
     assert "No candidates found." in result.output
 
 
+def test_discover_dexscreener_real_mode_uses_mocked_transport(monkeypatch) -> None:
+    monkeypatch.setattr(
+        commands,
+        "default_dexscreener_discovery_transport",
+        lambda _limit: [
+            {
+                "chainId": "solana",
+                "tokenAddress": "TOKEN123456789",
+                "url": "https://dexscreener.com/solana/TOKEN123456789",
+            }
+        ],
+    )
+
+    result = commands.discover(source="dexscreener", limit=20)
+
+    assert result.exit_code == 0
+    assert "TOKEN123456789" in result.output
+    assert "can_execute_trades" in result.output
+
+
 def _dex_response():
     return {
         "pairs": [
