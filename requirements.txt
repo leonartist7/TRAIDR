@@ -1,5 +1,5 @@
 # Local MVP foundations only. Optional adapters are added in later phases.
 duckdb>=1.1,<2.0
 PyYAML>=6.0,<7.0
+networkx>=3.3,<4.0
 pytest>=8.0,<9.0
-

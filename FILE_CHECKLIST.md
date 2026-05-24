@@ -51,6 +51,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `onchain/holder_concentration.py` | Holder concentration anti-rug signal helper | no | complete |
 | `onchain/static_contract_risk.py` | Optional static scanner JSON anti-rug mapper | no | complete |
 | `onchain/wallet_cluster_flags.py` | Wallet cluster anti-rug signal helper | no | complete |
+| `onchain/wallet_graph.py` | Fixture-only NetworkX wallet graph builder | no | complete |
+| `onchain/wallet_cluster_scorer.py` | Wallet graph cluster risk scoring helper | no | complete |
 | `execution/__init__.py` | Execution package marker | yes | complete |
 | `execution/models.py` | Approved simulation instruction models | yes | complete |
 | `execution/portfolio.py` | Deferred name variant; MVP ledger is `execution/portfolio_state.py` | no | not_started |
@@ -112,6 +114,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_holder_concentration.py` | Holder concentration signal tests | no | complete |
 | `tests/unit/test_static_contract_risk.py` | Static contract risk mapper tests | no | complete |
 | `tests/unit/test_wallet_cluster_flags.py` | Wallet cluster signal tests | no | complete |
+| `tests/unit/test_wallet_graph.py` | Fixture wallet graph tests | no | complete |
+| `tests/unit/test_wallet_cluster_scorer.py` | Wallet graph scoring tests | no | complete |
 | `tests/unit/test_intents.py` | Strict bounded intent parser tests | yes | complete |
 | `tests/unit/test_llm_gateway.py` | Mock LLM gateway tests | yes | complete |
 | `tests/unit/test_orchestrator.py` | Agent risk routing tests | yes | complete |
