@@ -71,6 +71,12 @@ traidr scheduler-once
 
 `traidr dashboard` prints the Streamlit launch command instead of opening it automatically. See `docs/cli.md`.
 
+CLI commands accept `--database` before or after the subcommand:
+
+```bash
+traidr inspect --database storage/duckdb/traidr_test.duckdb
+```
+
 ## Dashboard
 
 Run the read-only local dashboard after creating a local DuckDB file:

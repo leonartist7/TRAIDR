@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from cli import commands
 
@@ -38,7 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    args = build_parser().parse_args(_normalize_global_database_arg(argv))
     if args.command == "status":
         result = commands.status(args.database)
     elif args.command == "simulate":
@@ -59,6 +60,22 @@ def main(argv: list[str] | None = None) -> int:
         raise AssertionError(f"unsupported command: {args.command}")
     print(result.output)
     return result.exit_code
+
+
+def _normalize_global_database_arg(argv: list[str] | None) -> list[str] | None:
+    """Accept --database before or after the subcommand for operator ergonomics."""
+
+    args = list(sys.argv[1:] if argv is None else argv)
+    if "--database" not in args:
+        return args
+    index = args.index("--database")
+    if index == 0:
+        return args
+    if index + 1 >= len(args):
+        return args
+    value = args[index + 1]
+    del args[index : index + 2]
+    return ["--database", value, *args]
 
 
 if __name__ == "__main__":

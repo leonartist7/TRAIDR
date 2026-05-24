@@ -102,3 +102,11 @@ def test_main_dispatches_status(capsys) -> None:
 
     assert exit_code == 0
     assert "TRAIDR Status" in output
+
+
+def test_main_accepts_database_after_subcommand(tmp_path: Path, capsys) -> None:
+    exit_code = main(["status", "--database", str(tmp_path / "operator.duckdb")])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "operator.duckdb" in output

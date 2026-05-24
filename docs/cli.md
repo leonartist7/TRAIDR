@@ -52,8 +52,9 @@ Commands default to `config/settings.yaml`:
 data/traidr.duckdb
 ```
 
-Use `--database` before the command to override:
+Use `--database` before or after the command to override:
 
 ```powershell
 traidr --database C:\tmp\traidr.duckdb inspect
+traidr inspect --database C:\tmp\traidr.duckdb
 ```
