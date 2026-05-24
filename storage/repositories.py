@@ -279,6 +279,283 @@ class AuditRepository:
         return event_id
 
 
+class IntelligenceRepository:
+    """Persist non-executing market-intelligence outputs."""
+
+    def __init__(self, connection: duckdb.DuckDBPyConnection) -> None:
+        self.connection = connection
+
+    def record_agent_analysis(
+        self,
+        *,
+        agent_name: str,
+        subject_id: str,
+        status: str,
+        confidence: float,
+        reason_codes: Sequence[str],
+        payload: Mapping[str, JsonValue],
+        recorded_at: datetime | None = None,
+    ) -> str:
+        analysis_id = _new_id("agent_analysis")
+        self.connection.execute(
+            """
+            INSERT INTO agent_analyses (
+                analysis_id,
+                recorded_at,
+                agent_name,
+                subject_id,
+                status,
+                confidence,
+                reason_codes_json,
+                payload_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                analysis_id,
+                _require_aware_datetime(recorded_at or _utc_now()),
+                agent_name,
+                subject_id,
+                status,
+                confidence,
+                _safe_json(list(reason_codes)),
+                _safe_json(payload),
+            ],
+        )
+        return analysis_id
+
+    def record_cio_decision(
+        self,
+        *,
+        subject_id: str,
+        recommendation: str,
+        confidence: float,
+        reason_codes: Sequence[str],
+        payload: Mapping[str, JsonValue],
+        recorded_at: datetime | None = None,
+    ) -> str:
+        decision_id = _new_id("cio_decision")
+        self.connection.execute(
+            """
+            INSERT INTO cio_decisions (
+                decision_id,
+                recorded_at,
+                subject_id,
+                recommendation,
+                confidence,
+                reason_codes_json,
+                payload_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                decision_id,
+                _require_aware_datetime(recorded_at or _utc_now()),
+                subject_id,
+                recommendation,
+                confidence,
+                _safe_json(list(reason_codes)),
+                _safe_json(payload),
+            ],
+        )
+        return decision_id
+
+    def record_macro_news_event(
+        self,
+        *,
+        event_type: str,
+        subject_id: str,
+        classification: str,
+        confidence: float,
+        reason_codes: Sequence[str],
+        payload: Mapping[str, JsonValue],
+        recorded_at: datetime | None = None,
+    ) -> str:
+        event_id = _new_id("macro_news")
+        self.connection.execute(
+            """
+            INSERT INTO macro_news_events (
+                event_id,
+                recorded_at,
+                event_type,
+                subject_id,
+                classification,
+                confidence,
+                reason_codes_json,
+                payload_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                event_id,
+                _require_aware_datetime(recorded_at or _utc_now()),
+                event_type,
+                subject_id,
+                classification,
+                confidence,
+                _safe_json(list(reason_codes)),
+                _safe_json(payload),
+            ],
+        )
+        return event_id
+
+    def record_radar_state(
+        self,
+        *,
+        subject_id: str,
+        state: str,
+        rank: int,
+        opportunity_score: float,
+        risk_score: float,
+        confidence: float,
+        reason_codes: Sequence[str],
+        payload: Mapping[str, JsonValue],
+        recorded_at: datetime | None = None,
+    ) -> str:
+        radar_state_id = _new_id("radar_state")
+        self.connection.execute(
+            """
+            INSERT INTO opportunity_radar_states (
+                radar_state_id,
+                recorded_at,
+                subject_id,
+                state,
+                rank,
+                opportunity_score,
+                risk_score,
+                confidence,
+                reason_codes_json,
+                payload_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                radar_state_id,
+                _require_aware_datetime(recorded_at or _utc_now()),
+                subject_id,
+                state,
+                rank,
+                opportunity_score,
+                risk_score,
+                confidence,
+                _safe_json(list(reason_codes)),
+                _safe_json(payload),
+            ],
+        )
+        return radar_state_id
+
+    def record_notification_alert(
+        self,
+        *,
+        subject_id: str,
+        channel: str,
+        severity: str,
+        fingerprint: str,
+        status: str,
+        reason_codes: Sequence[str],
+        payload: Mapping[str, JsonValue],
+        recorded_at: datetime | None = None,
+    ) -> str:
+        alert_id = _new_id("alert")
+        self.connection.execute(
+            """
+            INSERT INTO notification_alerts (
+                alert_id,
+                recorded_at,
+                subject_id,
+                channel,
+                severity,
+                fingerprint,
+                status,
+                reason_codes_json,
+                payload_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                alert_id,
+                _require_aware_datetime(recorded_at or _utc_now()),
+                subject_id,
+                channel,
+                severity,
+                fingerprint,
+                status,
+                _safe_json(list(reason_codes)),
+                _safe_json(payload),
+            ],
+        )
+        return alert_id
+
+    def record_scheduler_run(
+        self,
+        *,
+        task_name: str,
+        due_at: datetime,
+        status: str,
+        reason_codes: Sequence[str],
+        payload: Mapping[str, JsonValue],
+        recorded_at: datetime | None = None,
+    ) -> str:
+        run_id = _new_id("scheduler_run")
+        self.connection.execute(
+            """
+            INSERT INTO scheduler_runs (
+                run_id,
+                recorded_at,
+                task_name,
+                due_at,
+                status,
+                reason_codes_json,
+                payload_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                run_id,
+                _require_aware_datetime(recorded_at or _utc_now()),
+                task_name,
+                _require_aware_datetime(due_at),
+                status,
+                _safe_json(list(reason_codes)),
+                _safe_json(payload),
+            ],
+        )
+        return run_id
+
+    def record_research_report(
+        self,
+        *,
+        report_type: str,
+        status: str,
+        reason_codes: Sequence[str],
+        payload: Mapping[str, JsonValue],
+        recorded_at: datetime | None = None,
+    ) -> str:
+        report_id = _new_id("research_report")
+        self.connection.execute(
+            """
+            INSERT INTO research_reports (
+                report_id,
+                recorded_at,
+                report_type,
+                status,
+                reason_codes_json,
+                payload_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                report_id,
+                _require_aware_datetime(recorded_at or _utc_now()),
+                report_type,
+                status,
+                _safe_json(list(reason_codes)),
+                _safe_json(payload),
+            ],
+        )
+        return report_id
+
+
 def _safe_json(value: Any) -> str:
     try:
         assert_safe_payload(value)
@@ -299,4 +576,3 @@ def _utc_now() -> datetime:
 
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex}"
-

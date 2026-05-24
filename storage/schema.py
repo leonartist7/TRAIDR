@@ -7,14 +7,21 @@ from datetime import datetime, timezone
 
 import duckdb
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 EXPECTED_TABLES = frozenset(
     {
+        "agent_analyses",
         "audit_events",
+        "cio_decisions",
         "evidence_snapshots",
+        "macro_news_events",
+        "notification_alerts",
+        "opportunity_radar_states",
         "portfolio_snapshots",
+        "research_reports",
         "research_intents",
         "risk_decisions",
+        "scheduler_runs",
         "schema_migrations",
         "simulated_fills",
         "simulated_orders",
@@ -111,6 +118,89 @@ _DDL: tuple[str, ...] = (
         payload_json VARCHAR NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS agent_analyses (
+        analysis_id VARCHAR PRIMARY KEY,
+        recorded_at TIMESTAMP NOT NULL,
+        agent_name VARCHAR NOT NULL,
+        subject_id VARCHAR NOT NULL,
+        status VARCHAR NOT NULL,
+        confidence DOUBLE NOT NULL,
+        reason_codes_json VARCHAR NOT NULL,
+        payload_json VARCHAR NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS cio_decisions (
+        decision_id VARCHAR PRIMARY KEY,
+        recorded_at TIMESTAMP NOT NULL,
+        subject_id VARCHAR NOT NULL,
+        recommendation VARCHAR NOT NULL,
+        confidence DOUBLE NOT NULL,
+        reason_codes_json VARCHAR NOT NULL,
+        payload_json VARCHAR NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS macro_news_events (
+        event_id VARCHAR PRIMARY KEY,
+        recorded_at TIMESTAMP NOT NULL,
+        event_type VARCHAR NOT NULL,
+        subject_id VARCHAR NOT NULL,
+        classification VARCHAR NOT NULL,
+        confidence DOUBLE NOT NULL,
+        reason_codes_json VARCHAR NOT NULL,
+        payload_json VARCHAR NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS opportunity_radar_states (
+        radar_state_id VARCHAR PRIMARY KEY,
+        recorded_at TIMESTAMP NOT NULL,
+        subject_id VARCHAR NOT NULL,
+        state VARCHAR NOT NULL,
+        rank INTEGER NOT NULL,
+        opportunity_score DOUBLE NOT NULL,
+        risk_score DOUBLE NOT NULL,
+        confidence DOUBLE NOT NULL,
+        reason_codes_json VARCHAR NOT NULL,
+        payload_json VARCHAR NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS notification_alerts (
+        alert_id VARCHAR PRIMARY KEY,
+        recorded_at TIMESTAMP NOT NULL,
+        subject_id VARCHAR NOT NULL,
+        channel VARCHAR NOT NULL,
+        severity VARCHAR NOT NULL,
+        fingerprint VARCHAR NOT NULL,
+        status VARCHAR NOT NULL,
+        reason_codes_json VARCHAR NOT NULL,
+        payload_json VARCHAR NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS scheduler_runs (
+        run_id VARCHAR PRIMARY KEY,
+        recorded_at TIMESTAMP NOT NULL,
+        task_name VARCHAR NOT NULL,
+        due_at TIMESTAMP NOT NULL,
+        status VARCHAR NOT NULL,
+        reason_codes_json VARCHAR NOT NULL,
+        payload_json VARCHAR NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS research_reports (
+        report_id VARCHAR PRIMARY KEY,
+        recorded_at TIMESTAMP NOT NULL,
+        report_type VARCHAR NOT NULL,
+        status VARCHAR NOT NULL,
+        reason_codes_json VARCHAR NOT NULL,
+        payload_json VARCHAR NOT NULL
+    )
+    """,
 )
 
 
@@ -159,4 +249,3 @@ def _execute_all(
 ) -> None:
     for statement in statements:
         connection.execute(statement)
-

@@ -2,6 +2,8 @@
 
 Date: 2026-05-22
 
+Updated: 2026-05-24 for Phase 17-20 personal market intelligence.
+
 ## Audit Method
 
 The audit used the repository checklist, import-direction scans, safety-keyword searches, the full pytest suite, and the deterministic simulation script. Graphify was probed but not used because `graphify` was not available on PATH and no `graphify-out/` graph exists in this workspace.
@@ -17,6 +19,8 @@ TRAIDR is ready for the current local simulation MVP boundary. The implemented f
 5. deterministic risk decision
 6. DuckDB-audited paper broker record
 
+The personal market intelligence layer is also ready for local research usage. It adds macro/news scoring, event calendar normalization, opportunity radar states, local notification history, deterministic scheduler ticks, and report summaries. All intelligence outputs are recommendation-only and persisted in DuckDB.
+
 ## Missing Or Deferred Files
 
 `FILE_CHECKLIST.md` still carries planned work that is outside this MVP increment:
@@ -27,11 +31,15 @@ TRAIDR is ready for the current local simulation MVP boundary. The implemented f
 - `sentiment/contracts.py` and `sentiment/features.py` for optional sentiment work.
 - `GRAPH_REPORT.md`, because Graphify is not currently configured.
 
+The Phase 17-20 intelligence modules are complete for the local, fixture-first boundary. A production daemon, hosted notification delivery, and live news feeds remain intentionally deferred.
+
 ## Safety Audit
 
 No live trading, exchange routing, withdrawal, transfer, custody, signing, or private-key runtime surface was found in the current execution path. The broker accepts simulation requests only, the risk engine rejects non-simulation mode, bounded intent parsing rejects unsupported output fields and unsupported actions, and TOON payload validation rejects secret-like keys before prompt construction.
 
 Anti-rug hard failures still take precedence over bullish agent intent. Missing or stale market context stays non-actionable as `INSUFFICIENT_DATA`.
+
+Market intelligence modules do not import or call execution broker modules. `BUY_CANDIDATE` and `SELL_CANDIDATE` are research states, not executable order instructions. Optional notification senders require injected transports and tests do not make network calls.
 
 ## Dependency Audit
 
@@ -55,3 +63,5 @@ Residual gaps are low-risk for this MVP: `scripts/inspect_db.py` is smoke-verifi
 ## README Audit
 
 The README now matches the implemented MVP: it documents Python setup, dependency install, pytest, the offline simulation runner, the local DB inspection helper, safety guarantees, architecture notes, optional Graphify use, absent features, and the next roadmap.
+
+The README now also documents the personal market intelligence packages, notification boundary, and deterministic scheduler primitives.

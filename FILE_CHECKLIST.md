@@ -54,6 +54,25 @@ Status values are `not_started`, `partial`, or `complete`.
 | `agents/opportunity_ranker.py` | Multi-agent opportunity/risk ranker | no | complete |
 | `agents/cio_agent.py` | CIO recommendation aggregator | no | complete |
 | `agents/agent_bus.py` | Structured non-executing agent bus | no | complete |
+| `intelligence/__init__.py` | Market intelligence package marker | no | complete |
+| `intelligence/macro_regime.py` | Local macro regime risk-on/risk-off scoring | no | complete |
+| `intelligence/news_scoring.py` | Fixture-first news scoring | no | complete |
+| `intelligence/event_calendar.py` | Local event calendar abstraction | no | complete |
+| `radar/__init__.py` | Opportunity radar package marker | no | complete |
+| `radar/models.py` | Opportunity radar state models | no | complete |
+| `radar/state_machine.py` | Opportunity state transitions | no | complete |
+| `radar/watchlist.py` | Watchlist normalization helpers | no | complete |
+| `radar/opportunity_radar.py` | Ranked opportunity radar | no | complete |
+| `notifications/__init__.py` | Notification package marker | no | complete |
+| `notifications/models.py` | Alert and send result models | no | complete |
+| `notifications/history.py` | DuckDB-backed local alert history | no | complete |
+| `notifications/dedupe.py` | Alert fingerprint deduplication | no | complete |
+| `notifications/senders.py` | Optional injected notification sender boundaries | no | complete |
+| `notifications/dispatcher.py` | Deduping notification dispatcher | no | complete |
+| `scheduler/__init__.py` | Research scheduler package marker | no | complete |
+| `scheduler/tasks.py` | Deterministic research task intervals | no | complete |
+| `scheduler/research_scheduler.py` | Testable due-task runner | no | complete |
+| `scheduler/reports.py` | Local research report summaries | no | complete |
 | `onchain/__init__.py` | On-chain package marker | yes | complete |
 | `onchain/contracts.py` | On-chain observation contracts | yes | complete |
 | `onchain/rug_observations.py` | Anti-rug evidence helpers | yes | complete |
@@ -113,6 +132,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/final_mvp_audit.md` | Final MVP safety and readiness audit | yes | complete |
 | `docs/STABILIZATION_REPORT.md` | Stabilization verification and deferral report | yes | complete |
 | `docs/dashboard.md` | Read-only Streamlit dashboard usage | no | complete |
+| `docs/market_intelligence.md` | Personal market intelligence architecture | no | complete |
+| `docs/notifications.md` | Local and optional notification boundaries | no | complete |
+| `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
 | `dashboard/app.py` | Read-only Streamlit dashboard entry point | no | complete |
 | `dashboard/components.py` | Dashboard display components | no | complete |
@@ -135,6 +157,12 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_agent_bus.py` | Multi-agent bus tests | no | complete |
 | `tests/unit/test_opportunity_ranker.py` | Opportunity ranker tests | no | complete |
 | `tests/unit/test_cio_agent.py` | CIO aggregation tests | no | complete |
+| `tests/unit/test_macro_regime.py` | Macro regime scoring tests | no | complete |
+| `tests/unit/test_news_scoring.py` | News scoring tests | no | complete |
+| `tests/unit/test_event_calendar.py` | Event calendar freshness tests | no | complete |
+| `tests/unit/test_opportunity_radar.py` | Radar state and ranking tests | no | complete |
+| `tests/unit/test_notifications.py` | Notification dedupe and sender tests | no | complete |
+| `tests/unit/test_scheduler.py` | Scheduler and report tests | no | complete |
 | `tests/unit/test_llm_gateway.py` | Mock LLM gateway tests | yes | complete |
 | `tests/unit/test_orchestrator.py` | Agent risk routing tests | yes | complete |
 | `tests/unit/test_results.py` | Shared result object unit tests | yes | complete |
@@ -150,6 +178,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_toon.py` | Payload boundary tests | yes | complete |
 | `tests/integration/test_storage_schema.py` | DuckDB schema initialization flow | yes | complete |
 | `tests/integration/test_storage_flow.py` | DuckDB integration flow | yes | complete |
+| `tests/integration/test_intelligence_persistence.py` | Intelligence DuckDB persistence flow | no | complete |
 | `tests/integration/test_execution_flow.py` | Risk-gated execution integration flow | yes | complete |
 | `tests/integration/test_simulation_flow.py` | Paper broker integration flow | yes | complete |
 | `tests/safety/test_no_live_trading.py` | Forbidden execution regression tests | yes | complete |
@@ -157,6 +186,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/safety/test_insufficient_data.py` | Fail-closed data tests | yes | complete |
 | `tests/safety/test_no_llm_direct_execution.py` | Raw LLM execution boundary tests | yes | complete |
 | `tests/safety/test_anti_rug_overrides_bullish.py` | Anti-rug veto safety tests | yes | complete |
+| `tests/safety/test_market_intelligence_no_execution.py` | Intelligence package no-execution import guard | no | complete |
 
 ## Stabilization Deferrals
 

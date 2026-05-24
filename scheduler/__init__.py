@@ -1,0 +1,2 @@
+"""Deterministic research scheduling helpers."""
+

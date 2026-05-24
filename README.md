@@ -2,6 +2,8 @@
 
 TRAIDR v3.1 is a local, simulation-first micro-cap crypto intelligence and paper-trading research engine. The MVP combines fixture-first observations, deterministic technical vectors, bounded mock agent research, DuckDB audit storage, and a deterministic risk gate before any paper action is recorded.
 
+The current research layer also includes a personal market intelligence system: macro/news scoring, multi-agent CIO recommendations, ranked opportunity radar states, local alert history, and deterministic scheduler primitives. These outputs are recommendation-only and persisted locally in DuckDB.
+
 ## Safety Warning
 
 This project is for simulation and research. It is not financial advice and must not be used as a live-trading or custody system.
@@ -57,6 +59,19 @@ python -m streamlit run dashboard/app.py
 
 See `docs/dashboard.md` for details.
 
+## Market Intelligence
+
+TRAIDR can score local macro/news fixtures, combine structured non-executing agent analyses, rank watchlist opportunities, record local alert history, and run deterministic scheduler ticks from Python modules. The scheduler is intentionally a callable local research primitive, not a hidden daemon.
+
+Key modules:
+
+- `intelligence/` for macro regime, news scoring, and event calendar abstractions.
+- `radar/` for watchlist ranking and opportunity states.
+- `notifications/` for local alert history and optional injected ntfy, Telegram, or Discord transports.
+- `scheduler/` for deterministic `1m`, `5m`, `15m`, `1h`, `4h`, and daily research task intervals.
+
+See `docs/market_intelligence.md`, `docs/notifications.md`, and `docs/scheduler.md`.
+
 ## Test
 
 ```bash
@@ -79,6 +94,7 @@ TRAIDR uses explicit boundaries:
 4. Agents receive scrubbed TOON-compressed research payloads and return bounded intents.
 5. The deterministic risk engine approves, rejects, or degrades decisions.
 6. The simulation broker records paper-only portfolio changes in DuckDB.
+7. Market intelligence modules persist recommendations, alerts, scheduler runs, and reports without execution authority.
 
 See `SPEC.md`, `SAFETY_RULES.md`, and `IMPLEMENTATION_PLAN.md` before implementing runtime modules.
 
@@ -90,6 +106,8 @@ The MVP implementation is described further in `docs/architecture.md`, `docs/saf
 - Withdrawals, transfers, bridging, custody, signing, or private-key handling.
 - Real LLM provider calls.
 - Paid APIs or key-required source adapters.
+- Background autonomous notification daemons.
+- Notification secrets or tokens stored by TRAIDR.
 
 ## Next Roadmap
 
