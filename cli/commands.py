@@ -12,6 +12,9 @@ from typing import Any
 from alerts.rules import ResearchAlertSnapshot, all_rule_descriptions
 from alerts.rule_engine import ResearchAlertRuleEngine
 from data_pipeline.scan_models import MarketScanCandidate
+from intelligence.macro_sources import fetch_macro_result, fixture_macro_result
+from intelligence.news_sources import fixture_news_result
+from intelligence.rss_adapter import RSSNewsAdapter, default_rss_transport
 from agents.agent_bus import run_agent_bus
 from agents.liquidity_agent import LiquidityAgent
 from agents.technical_agent import TechnicalAgent
@@ -341,6 +344,55 @@ def briefing(database: str | None = None) -> CommandResult:
     with DuckDBStore(db_path, read_only=True) as store:
         report = build_daily_briefing(store.connection)
     return CommandResult(0, format_daily_briefing(report))
+
+
+def news(*, fixture: bool = False, source: str | None = None, url: str | None = None) -> CommandResult:
+    if fixture:
+        result = fixture_news_result()
+    elif source == "rss":
+        result = RSSNewsAdapter(default_rss_transport).fetch(url or "https://cointelegraph.com/rss")
+    else:
+        result = fixture_news_result()
+    return CommandResult(
+        0,
+        "\n\n".join(
+            (
+                section(
+                    "News Intelligence",
+                    key_values(
+                        {
+                            "status": result.status,
+                            "classification": result.score.get("classification"),
+                            "confidence": result.score.get("confidence"),
+                            "reason_codes": result.reason_codes,
+                            "can_execute_trades": result.can_execute_trades,
+                        }
+                    ).splitlines(),
+                ),
+                section("News Items", records_table([item.to_dict() for item in result.items], empty="No news items found.").splitlines()),
+            )
+        ),
+    )
+
+
+def macro(*, fixture: bool = False) -> CommandResult:
+    result = fixture_macro_result() if fixture else fetch_macro_result()
+    return CommandResult(
+        0,
+        section(
+            "Macro Intelligence",
+            key_values(
+                {
+                    "status": result.status,
+                    "classification": result.score.get("classification"),
+                    "confidence": result.score.get("confidence"),
+                    "signals": result.signals,
+                    "reason_codes": result.reason_codes,
+                    "can_execute_trades": result.can_execute_trades,
+                }
+            ).splitlines(),
+        ),
+    )
 
 
 def watch_add(

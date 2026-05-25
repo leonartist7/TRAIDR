@@ -43,6 +43,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("briefing", help="Generate a read-only daily intelligence briefing from DuckDB.")
 
+    news_parser = subparsers.add_parser("news", help="Fetch or score read-only news intelligence.")
+    news_parser.add_argument("--fixture", action="store_true")
+    news_parser.add_argument("--source", choices=("rss",))
+    news_parser.add_argument("--url")
+
+    macro_parser = subparsers.add_parser("macro", help="Fetch or score read-only macro intelligence.")
+    macro_parser.add_argument("--fixture", action="store_true")
+
     watch_parser = subparsers.add_parser("watch", help="Manage the local read-only watchlist.")
     watch_subparsers = watch_parser.add_subparsers(dest="watch_command", required=True)
     watch_add_parser = watch_subparsers.add_parser("add", help="Add or reactivate a watched pair.")
@@ -125,6 +133,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     elif args.command == "briefing":
         result = commands.briefing(args.database)
+    elif args.command == "news":
+        result = commands.news(fixture=args.fixture, source=args.source, url=args.url)
+    elif args.command == "macro":
+        result = commands.macro(fixture=args.fixture)
     elif args.command == "watch":
         if args.watch_command == "add":
             result = commands.watch_add(

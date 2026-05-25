@@ -70,6 +70,8 @@ traidr scan --fixture
 traidr discover --fixture
 traidr token --fixture
 traidr briefing
+traidr news --fixture
+traidr macro --fixture
 traidr watch list
 traidr portfolio report
 traidr dashboard
@@ -107,6 +109,29 @@ Key modules:
 - `scheduler/` for deterministic `1m`, `5m`, `15m`, `1h`, `4h`, and daily research task intervals.
 
 See `docs/market_intelligence.md`, `docs/notifications.md`, and `docs/scheduler.md`.
+
+Read-only macro and news adapters can be run in fixture mode or optional RSS/source mode:
+
+```bash
+python -m cli.main news --fixture
+python -m cli.main macro --fixture
+python -m cli.main news --source rss
+python -m cli.main macro
+```
+
+Source failures return `INSUFFICIENT_DATA`; missing news is never treated as bullish. See `docs/news_macro_sources.md`.
+
+## Sentiment And Smart Wallet Lite
+
+TRAIDR includes local sentiment-lite feature extraction and fixture wallet-history scoring for personal research:
+
+- Sentiment detects momentum, warnings, scam language, spam/shill repetition, and ticker mentions.
+- Spam and scam language reduce confidence.
+- Missing sentiment is neutral/insufficient, never bullish.
+- Smart wallet scoring uses fixture wallet histories and graph evidence only.
+- Unknown wallet history does not create bullish evidence.
+
+See `docs/sentiment_lite.md` and `docs/smart_wallet_lite.md`.
 
 ## Market Scan
 

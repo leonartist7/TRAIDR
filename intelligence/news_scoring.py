@@ -31,6 +31,7 @@ def score_news_items(items: Iterable[Mapping[str, Any]]) -> NewsScore:
 
     sentiments = [_sentiment(row.get("sentiment")) for row in rows]
     impacts = [_impact(row.get("impact")) for row in rows]
+    category_reasons = _category_reasons(rows)
     usable = [(sentiment, impact) for sentiment, impact in zip(sentiments, impacts) if sentiment is not None]
     if not usable:
         return NewsScore("INSUFFICIENT_DATA", 0.0, 0.0, ("NEWS_SENTIMENT_MISSING",))
@@ -52,7 +53,10 @@ def score_news_items(items: Iterable[Mapping[str, Any]]) -> NewsScore:
     else:
         classification = "NEUTRAL_NEWS"
         reasons.append("NEWS_NEUTRAL")
-    return NewsScore(classification, round(score, 4), round(confidence, 4), tuple(reasons))
+    reasons.extend(category_reasons)
+    if any(reason in category_reasons for reason in ("HACK_EXPLOIT_RISK", "DELISTING_RISK", "REGULATION_RISK", "MARKET_WIDE_RISK_OFF")):
+        confidence = max(0.0, confidence - 0.05)
+    return NewsScore(classification, round(score, 4), round(confidence, 4), tuple(dict.fromkeys(reasons)))
 
 
 def _sentiment(value: Any) -> float | None:
@@ -66,3 +70,22 @@ def _impact(value: Any) -> float:
         return 1.0
     return min(5.0, max(0.1, float(value)))
 
+
+def _category_reasons(rows: tuple[Mapping[str, Any], ...]) -> list[str]:
+    reasons: list[str] = []
+    for row in rows:
+        categories = row.get("categories") or ()
+        if isinstance(categories, str):
+            categories = (categories,)
+        for category in categories:
+            text = str(category)
+            if text in {
+                "HACK_EXPLOIT_RISK",
+                "LISTING_NEWS",
+                "DELISTING_RISK",
+                "REGULATION_RISK",
+                "PARTNERSHIP_PRODUCT_NEWS",
+                "MARKET_WIDE_RISK_OFF",
+            }:
+                reasons.append(text)
+    return reasons

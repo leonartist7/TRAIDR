@@ -15,6 +15,15 @@ def rank_watchlist(records: Iterable[Mapping[str, Any]]) -> tuple[RadarCandidate
     candidates: list[RadarCandidate] = []
     for record in normalize_watchlist(records):
         ranking = rank_opportunity(record["analyses"])
+        if record.get("sentiment_missing"):
+            ranking = type(ranking)(
+                opportunity_score=ranking.opportunity_score,
+                risk_score=ranking.risk_score,
+                confidence=max(0.0, round(ranking.confidence - 0.1, 4)),
+                missing_critical_count=ranking.missing_critical_count + 1,
+                conflict_detected=ranking.conflict_detected,
+                reason_codes=tuple(dict.fromkeys((*ranking.reason_codes, "SENTIMENT_MISSING_NOT_BULLISH"))),
+            )
         state, state_reasons = classify_opportunity(
             opportunity_score=ranking.opportunity_score,
             risk_score=ranking.risk_score,
@@ -55,4 +64,3 @@ def rank_watchlist(records: Iterable[Mapping[str, Any]]) -> tuple[RadarCandidate
         )
         for index, candidate in enumerate(sorted_candidates, start=1)
     )
-

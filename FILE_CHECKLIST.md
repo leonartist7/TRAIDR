@@ -66,6 +66,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `intelligence/macro_regime.py` | Local macro regime risk-on/risk-off scoring | no | complete |
 | `intelligence/news_scoring.py` | Fixture-first news scoring | no | complete |
 | `intelligence/event_calendar.py` | Local event calendar abstraction | no | complete |
+| `intelligence/news_sources.py` | Read-only news source contracts and fixture loader | no | complete |
+| `intelligence/rss_adapter.py` | Optional read-only RSS news adapter | no | complete |
+| `intelligence/crypto_news_adapter.py` | Optional read-only crypto news adapter boundary | no | complete |
+| `intelligence/macro_sources.py` | Optional read-only macro source adapter boundary | no | complete |
 | `radar/__init__.py` | Opportunity radar package marker | no | complete |
 | `radar/models.py` | Opportunity radar state models | no | complete |
 | `radar/state_machine.py` | Opportunity state transitions | no | complete |
@@ -116,6 +120,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `onchain/wallet_cluster_flags.py` | Wallet cluster anti-rug signal helper | no | complete |
 | `onchain/wallet_graph.py` | Fixture-only NetworkX wallet graph builder | no | complete |
 | `onchain/wallet_cluster_scorer.py` | Wallet graph cluster risk scoring helper | no | complete |
+| `onchain/wallet_history_features.py` | Fixture wallet-history feature extraction | no | complete |
+| `onchain/wallet_profiles.py` | Smart-wallet profile assembly | no | complete |
+| `onchain/smart_wallet_score.py` | Smart-wallet evidence scoring separate from safety | no | complete |
 | `execution/__init__.py` | Execution package marker | yes | complete |
 | `execution/models.py` | Approved simulation instruction models | yes | complete |
 | `execution/portfolio.py` | Deferred name variant; MVP ledger is `execution/portfolio_state.py` | no | not_started |
@@ -141,8 +148,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `prompts/system_research.md` | Safe system prompt template | no | complete |
 | `prompts/intent_schema.md` | Bounded intent response instructions | no | complete |
 | `sentiment/__init__.py` | Sentiment package marker | no | complete |
-| `sentiment/contracts.py` | Sentiment feature contracts | no | not_started |
-| `sentiment/features.py` | Optional free sentiment features | no | not_started |
+| `sentiment/contracts.py` | Sentiment feature contracts | no | complete |
+| `sentiment/features.py` | Local sentiment-lite feature extraction | no | complete |
+| `sentiment/scorer.py` | Conservative sentiment-lite scorer | no | complete |
+| `sentiment/spam_filter.py` | Spam and shill repetition detector | no | complete |
 | `technicals/__init__.py` | Technicals package marker | yes | complete |
 | `technicals/indicators.py` | Deterministic indicators | yes | complete |
 | `technicals/vector_engine.py` | Feature vector builder | yes | complete |
@@ -178,6 +187,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/sell_risk.md` | Manual position sell-risk monitor usage | no | complete |
 | `docs/notifications.md` | Local and optional notification boundaries | no | complete |
 | `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
+| `docs/news_macro_sources.md` | Read-only news and macro adapter usage | no | complete |
+| `docs/sentiment_lite.md` | Sentiment-lite usage and safety notes | no | complete |
+| `docs/smart_wallet_lite.md` | Smart-wallet lite usage and safety notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
 | `dashboard/app.py` | Read-only Streamlit dashboard entry point | no | complete |
 | `dashboard/components.py` | Dashboard display components | no | complete |
@@ -216,10 +228,19 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_macro_regime.py` | Macro regime scoring tests | no | complete |
 | `tests/unit/test_news_scoring.py` | News scoring tests | no | complete |
 | `tests/unit/test_event_calendar.py` | Event calendar freshness tests | no | complete |
+| `tests/unit/test_news_sources.py` | Read-only news source classification tests | no | complete |
+| `tests/unit/test_rss_adapter.py` | Mocked RSS adapter tests | no | complete |
+| `tests/unit/test_macro_sources.py` | Mocked macro source adapter tests | no | complete |
 | `tests/unit/test_opportunity_radar.py` | Radar state and ranking tests | no | complete |
 | `tests/unit/test_scan_to_radar.py` | Scan-to-radar conversion tests | no | complete |
 | `tests/unit/test_discovery_to_radar.py` | Discovery-to-radar conversion tests | no | complete |
 | `tests/unit/test_notifications.py` | Notification dedupe and sender tests | no | complete |
+| `tests/unit/test_sentiment_features.py` | Sentiment-lite feature extraction tests | no | complete |
+| `tests/unit/test_sentiment_spam_filter.py` | Sentiment spam filter tests | no | complete |
+| `tests/unit/test_sentiment_scorer.py` | Conservative sentiment scoring tests | no | complete |
+| `tests/unit/test_wallet_history_features.py` | Wallet-history feature tests | no | complete |
+| `tests/unit/test_wallet_profiles.py` | Wallet profile completeness tests | no | complete |
+| `tests/unit/test_smart_wallet_score.py` | Smart-wallet score tests | no | complete |
 | `tests/unit/test_scheduler.py` | Scheduler and report tests | no | complete |
 | `tests/unit/test_llm_gateway.py` | Mock LLM gateway tests | yes | complete |
 | `tests/unit/test_orchestrator.py` | Agent risk routing tests | yes | complete |
