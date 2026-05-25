@@ -34,9 +34,12 @@ addopts = "-ra"
 packages = [
     "alerts",
     "agents",
+    "ask",
     "cli",
     "config",
     "data_pipeline",
+    "dashboard",
+    "dashboard.pages",
     "execution",
     "intelligence",
     "memory",

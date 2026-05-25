@@ -70,6 +70,7 @@ traidr scan --fixture
 traidr discover --fixture
 traidr token --fixture
 traidr briefing
+traidr ask "what are my top risks?"
 traidr news --fixture
 traidr macro --fixture
 traidr watch list
@@ -96,6 +97,19 @@ python -m streamlit run dashboard/app.py
 ```
 
 See `docs/dashboard.md` for details.
+
+## Ask TRAIDR
+
+Ask local questions against DuckDB summaries without an external LLM:
+
+```bash
+python -m cli.main ask "what are my top risks?"
+python -m cli.main ask "show best radar candidates"
+python -m cli.main ask "what should I watch today?"
+python -m cli.main ask "show recent alerts"
+```
+
+Ask TRAIDR is read-only and returns suggestions for unsupported questions. See `docs/ask_traidr.md`.
 
 ## Market Intelligence
 

@@ -15,8 +15,8 @@ from dashboard.components import (  # noqa: E402
     render_database_summary,
     render_safety_status,
     render_setup_instructions,
-    render_table,
 )
+from dashboard.pages import alerts, market_radar, portfolio, reports, token_detail, watchlist  # noqa: E402
 from dashboard.queries import configured_database_path, load_dashboard_data  # noqa: E402
 
 
@@ -38,13 +38,31 @@ def main() -> None:
         render_setup_instructions(str(data.database_path))
         return
 
-    render_table("Latest Market Snapshots", data.market_snapshots)
-    render_table("Technical Vectors", data.technical_vectors)
-    render_table("Anti-Rug Status", data.anti_rug_status)
-    render_table("Risk Decisions", data.risk_decisions)
-    render_table("Simulated Orders", data.simulated_orders)
-    render_table("Simulated Fills", data.simulated_fills)
-    render_table("Audit Events", data.audit_events)
+    tabs = st.tabs(
+        [
+            "Market Radar",
+            "Token Detail",
+            "Watchlist",
+            "Portfolio",
+            "Alerts",
+            "Reports",
+            "Safety Status",
+        ]
+    )
+    with tabs[0]:
+        market_radar.render(data)
+    with tabs[1]:
+        token_detail.render(data)
+    with tabs[2]:
+        watchlist.render(data)
+    with tabs[3]:
+        portfolio.render(data)
+    with tabs[4]:
+        alerts.render(data)
+    with tabs[5]:
+        reports.render(data)
+    with tabs[6]:
+        render_safety_status(data)
 
 
 if __name__ == "__main__":

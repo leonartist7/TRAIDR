@@ -48,6 +48,18 @@ def render_database_summary(data: DashboardData) -> None:
     st.write(f"Tables: {', '.join(sorted(data.tables)) if data.tables else 'none'}")
 
 
+def render_risk_first_tables(
+    risk_title: str,
+    risk_rows: Sequence[Mapping[str, Any]],
+    opportunity_title: str,
+    opportunity_rows: Sequence[Mapping[str, Any]],
+) -> None:
+    """Render risk evidence before opportunity evidence."""
+
+    render_table(risk_title, risk_rows)
+    render_table(opportunity_title, opportunity_rows)
+
+
 def render_table(title: str, rows: Sequence[Mapping[str, Any]]) -> None:
     """Render a read-only table section with empty-state handling."""
 

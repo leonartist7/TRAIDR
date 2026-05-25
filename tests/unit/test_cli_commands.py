@@ -5,6 +5,7 @@ from cli.commands import (
     alerts,
     alerts_rules,
     alerts_test,
+    ask,
     briefing,
     dashboard,
     discover,
@@ -251,12 +252,28 @@ def test_dashboard_prints_launch_command_without_launching(tmp_path: Path) -> No
     assert "manual for safety" in result.output
 
 
+def test_ask_cli_returns_local_answer(tmp_path: Path) -> None:
+    result = ask("show safety status", database=str(tmp_path / "missing-ask.duckdb"))
+
+    assert result.exit_code == 0
+    assert "Ask TRAIDR" in result.output
+    assert "can_execute_trades: false" in result.output
+
+
 def test_main_dispatches_status(capsys) -> None:
     exit_code = main(["status"])
     output = capsys.readouterr().out
 
     assert exit_code == 0
     assert "TRAIDR Status" in output
+
+
+def test_main_dispatches_ask(capsys) -> None:
+    exit_code = main(["ask", "show", "safety", "status"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Ask TRAIDR" in output
 
 
 def test_main_accepts_database_after_subcommand(tmp_path: Path, capsys) -> None:

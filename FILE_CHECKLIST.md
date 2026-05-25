@@ -33,6 +33,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `cli/main.py` | TRAIDR argparse command entry point | no | complete |
 | `cli/commands.py` | Local command center implementations | no | complete |
 | `cli/formatters.py` | Terminal output formatting helpers | no | complete |
+| `ask/__init__.py` | Ask TRAIDR package marker | no | complete |
+| `ask/intents.py` | Supported local question intents | no | complete |
+| `ask/query_parser.py` | Local no-LLM query parser | no | complete |
+| `ask/local_answerer.py` | DuckDB-backed local answer generator | no | complete |
 | `data_pipeline/__init__.py` | Data pipeline package marker | yes | complete |
 | `data_pipeline/contracts.py` | Snapshot and adapter contracts | yes | complete |
 | `data_pipeline/validation.py` | Freshness and shape validation | yes | complete |
@@ -174,6 +178,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/final_mvp_audit.md` | Final MVP safety and readiness audit | yes | complete |
 | `docs/STABILIZATION_REPORT.md` | Stabilization verification and deferral report | yes | complete |
 | `docs/dashboard.md` | Read-only Streamlit dashboard usage | no | complete |
+| `docs/ask_traidr.md` | Ask TRAIDR local query usage | no | complete |
 | `docs/cli.md` | Operator CLI usage and safety notes | no | complete |
 | `docs/market_intelligence.md` | Personal market intelligence architecture | no | complete |
 | `docs/market_scan.md` | Read-only market scan usage | no | complete |
@@ -194,9 +199,18 @@ Status values are `not_started`, `partial`, or `complete`.
 | `dashboard/app.py` | Read-only Streamlit dashboard entry point | no | complete |
 | `dashboard/components.py` | Dashboard display components | no | complete |
 | `dashboard/queries.py` | Read-only DuckDB dashboard queries | no | complete |
+| `dashboard/pages/market_radar.py` | Market radar and scan evidence dashboard page | no | complete |
+| `dashboard/pages/watchlist.py` | Watchlist dashboard page | no | complete |
+| `dashboard/pages/token_detail.py` | Token detail dashboard page | no | complete |
+| `dashboard/pages/portfolio.py` | Portfolio dashboard page | no | complete |
+| `dashboard/pages/alerts.py` | Alerts dashboard page | no | complete |
+| `dashboard/pages/reports.py` | Reports dashboard page | no | complete |
 | `tests/conftest.py` | Shared test fixtures | yes | complete |
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
 | `tests/unit/test_cli_commands.py` | Operator CLI command tests | no | complete |
+| `tests/unit/test_dashboard_queries.py` | Read-only dashboard query tests | no | complete |
+| `tests/unit/test_query_parser.py` | Ask TRAIDR query parser tests | no | complete |
+| `tests/unit/test_local_answerer.py` | Ask TRAIDR local answer tests | no | complete |
 | `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |
 | `tests/unit/test_coingecko_adapter.py` | CoinGecko read-only adapter tests | no | complete |
 | `tests/unit/test_defillama_adapter.py` | DefiLlama read-only adapter tests | no | complete |

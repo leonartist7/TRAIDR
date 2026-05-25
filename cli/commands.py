@@ -11,6 +11,7 @@ from typing import Any
 
 from alerts.rules import ResearchAlertSnapshot, all_rule_descriptions
 from alerts.rule_engine import ResearchAlertRuleEngine
+from ask.local_answerer import answer_local_question
 from data_pipeline.scan_models import MarketScanCandidate
 from intelligence.macro_sources import fetch_macro_result, fixture_macro_result
 from intelligence.news_sources import fixture_news_result
@@ -392,6 +393,13 @@ def macro(*, fixture: bool = False) -> CommandResult:
                 }
             ).splitlines(),
         ),
+    )
+
+
+def ask(question: str, database: str | None = None, *, limit: int = 5) -> CommandResult:
+    return CommandResult(
+        0,
+        answer_local_question(question, database_path=_database_path(database), limit=limit),
     )
 
 

@@ -51,6 +51,10 @@ def build_parser() -> argparse.ArgumentParser:
     macro_parser = subparsers.add_parser("macro", help="Fetch or score read-only macro intelligence.")
     macro_parser.add_argument("--fixture", action="store_true")
 
+    ask_parser = subparsers.add_parser("ask", help="Ask a local read-only question against DuckDB summaries.")
+    ask_parser.add_argument("question", nargs="+")
+    ask_parser.add_argument("--limit", type=int, default=5)
+
     watch_parser = subparsers.add_parser("watch", help="Manage the local read-only watchlist.")
     watch_subparsers = watch_parser.add_subparsers(dest="watch_command", required=True)
     watch_add_parser = watch_subparsers.add_parser("add", help="Add or reactivate a watched pair.")
@@ -137,6 +141,8 @@ def main(argv: list[str] | None = None) -> int:
         result = commands.news(fixture=args.fixture, source=args.source, url=args.url)
     elif args.command == "macro":
         result = commands.macro(fixture=args.fixture)
+    elif args.command == "ask":
+        result = commands.ask(" ".join(args.question), args.database, limit=args.limit)
     elif args.command == "watch":
         if args.watch_command == "add":
             result = commands.watch_add(

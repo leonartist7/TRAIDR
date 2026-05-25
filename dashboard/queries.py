@@ -21,6 +21,13 @@ class DashboardData:
     database_exists: bool
     tables: set[str]
     market_snapshots: list[dict[str, Any]]
+    market_radar: list[dict[str, Any]]
+    scan_evidence: list[dict[str, Any]]
+    token_details: list[dict[str, Any]]
+    watchlist_entries: list[dict[str, Any]]
+    portfolio_entries: list[dict[str, Any]]
+    alerts: list[dict[str, Any]]
+    reports: list[dict[str, Any]]
     technical_vectors: list[dict[str, Any]]
     anti_rug_status: list[dict[str, Any]]
     risk_decisions: list[dict[str, Any]]
@@ -55,6 +62,13 @@ def load_dashboard_data(
             database_exists=False,
             tables=set(),
             market_snapshots=[],
+            market_radar=[],
+            scan_evidence=[],
+            token_details=[],
+            watchlist_entries=[],
+            portfolio_entries=[],
+            alerts=[],
+            reports=[],
             technical_vectors=[],
             anti_rug_status=[],
             risk_decisions=[],
@@ -79,6 +93,99 @@ def load_dashboard_data(
                        payload_json, provenance_json
                 FROM evidence_snapshots
                 ORDER BY collected_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            market_radar=_query_if_table(
+                connection,
+                tables,
+                "opportunity_radar_states",
+                """
+                SELECT subject_id, state, rank, risk_score, opportunity_score, confidence,
+                       reason_codes_json, payload_json
+                FROM opportunity_radar_states
+                ORDER BY risk_score DESC, opportunity_score DESC, recorded_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            scan_evidence=_query_if_table(
+                connection,
+                tables,
+                "evidence_snapshots",
+                """
+                SELECT snapshot_id, source_name, observed_at, collected_at, quality_status,
+                       payload_json, provenance_json
+                FROM evidence_snapshots
+                WHERE source_name LIKE 'market_scan:%'
+                ORDER BY collected_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            token_details=_query_if_table(
+                connection,
+                tables,
+                "evidence_snapshots",
+                """
+                SELECT snapshot_id, source_name, observed_at, collected_at, quality_status,
+                       payload_json, provenance_json
+                FROM evidence_snapshots
+                WHERE source_name LIKE 'market_scan:%'
+                   OR source_name LIKE 'token_detail:%'
+                ORDER BY collected_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            watchlist_entries=_query_if_table(
+                connection,
+                tables,
+                "watchlist_entries",
+                """
+                SELECT pair_ref, note, tags_json, created_at, updated_at, active
+                FROM watchlist_entries
+                ORDER BY updated_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            portfolio_entries=_query_if_table(
+                connection,
+                tables,
+                "manual_portfolio_entries",
+                """
+                SELECT entry_id, symbol, chain, pair_ref, entry_price, size_usd,
+                       conviction, risk_level, active, updated_at
+                FROM manual_portfolio_entries
+                ORDER BY updated_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            alerts=_query_if_table(
+                connection,
+                tables,
+                "notification_alerts",
+                """
+                SELECT alert_id, recorded_at, subject_id, channel, severity, status,
+                       reason_codes_json, payload_json
+                FROM notification_alerts
+                ORDER BY recorded_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            reports=_query_if_table(
+                connection,
+                tables,
+                "research_reports",
+                """
+                SELECT report_id, recorded_at, report_type, status, reason_codes_json,
+                       payload_json
+                FROM research_reports
+                ORDER BY recorded_at DESC
                 LIMIT ?
                 """,
                 limit,
@@ -211,4 +318,9 @@ def _query_if_table(
         return []
     cursor = connection.execute(query, [limit])
     columns = [column[0] for column in cursor.description]
-    return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
+    return [_with_non_execution_flag(dict(zip(columns, row, strict=True))) for row in cursor.fetchall()]
+
+
+def _with_non_execution_flag(row: dict[str, Any]) -> dict[str, Any]:
+    row.setdefault("can_execute_trades", False)
+    return row
