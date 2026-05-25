@@ -2,6 +2,8 @@ from pathlib import Path
 
 from cli.commands import (
     alerts,
+    alerts_rules,
+    alerts_test,
     briefing,
     dashboard,
     discover,
@@ -181,6 +183,26 @@ def test_alerts_shows_local_alert_history(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "token-a" in result.output
     assert "RECORDED_ONLY" in result.output
+
+
+def test_alert_rules_cli_lists_rules() -> None:
+    result = alerts_rules()
+
+    assert result.exit_code == 0
+    assert "OPPORTUNITY_INCREASED" in result.output
+    assert "SAFETY_DATA_INCOMPLETE" in result.output
+
+
+def test_alerts_test_cli_records_local_alerts(tmp_path: Path) -> None:
+    database = tmp_path / "alerts-test.duckdb"
+
+    result = alerts_test(str(database))
+    history = alerts(str(database))
+
+    assert result.exit_code == 0
+    assert "Alert Rule Test" in result.output
+    assert "can_execute_trades: False" in result.output
+    assert "fixture-sol-usdc" in history.output
 
 
 def test_dashboard_prints_launch_command_without_launching(tmp_path: Path) -> None:

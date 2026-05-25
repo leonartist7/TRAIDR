@@ -42,3 +42,9 @@ class NotificationDispatcher:
             self.history.record(alert, result, recorded_at=now)
             results.append(result)
         return tuple(results)
+
+    def dispatch_many(self, alerts: Iterable[Alert], *, now: datetime | None = None) -> tuple[SendResult, ...]:
+        results: list[SendResult] = []
+        for alert in alerts:
+            results.extend(self.dispatch(alert, now=now))
+        return tuple(results)

@@ -87,6 +87,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `reports/report_models.py` | Read-only report state models | no | complete |
 | `reports/daily_briefing.py` | DuckDB-backed daily intelligence briefing builder | no | complete |
 | `reports/formatters.py` | Daily briefing terminal formatter | no | complete |
+| `alerts/__init__.py` | Alert rules package marker | no | complete |
+| `alerts/rules.py` | Research alert rule definitions | no | complete |
+| `alerts/rule_engine.py` | Local alert rule evaluation and dispatch | no | complete |
+| `alerts/alert_templates.py` | Research-only alert message templates | no | complete |
 | `watchlist/__init__.py` | Watchlist package marker | no | complete |
 | `watchlist/models.py` | Local watchlist models | no | complete |
 | `watchlist/repository.py` | DuckDB-backed watchlist repository | no | complete |
@@ -162,6 +166,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/token_detail.md` | Read-only token detail usage | no | complete |
 | `docs/daily_briefing.md` | Daily briefing report usage | no | complete |
 | `docs/watchlist.md` | Local watchlist usage and safety notes | no | complete |
+| `docs/alert_rules.md` | Research alert rule usage and safety notes | no | complete |
 | `docs/notifications.md` | Local and optional notification boundaries | no | complete |
 | `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
@@ -181,6 +186,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_token_detail.py` | Read-only token detail card tests | no | complete |
 | `tests/unit/test_daily_briefing.py` | Daily briefing report tests | no | complete |
 | `tests/unit/test_watchlist_service.py` | Watchlist service and alert tests | no | complete |
+| `tests/unit/test_alert_rules_engine.py` | Research alert rule engine tests | no | complete |
 | `tests/unit/test_scan_command_real_mode.py` | CLI real scan mode tests with mocked source | no | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
 | `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |

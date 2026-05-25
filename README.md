@@ -65,6 +65,7 @@ traidr inspect
 traidr radar
 traidr report --type daily
 traidr alerts
+traidr alerts rules
 traidr scan --fixture
 traidr discover --fixture
 traidr token --fixture
@@ -166,6 +167,18 @@ python -m cli.main watch scan
 ```
 
 `watch scan` uses read-only market data boundaries and can create local alerts when risk worsens or opportunity improves. It never creates execution actions. See `docs/watchlist.md`.
+
+## Alert Rules
+
+List alert rules or run a deterministic local alert test:
+
+```bash
+python -m cli.main alerts
+python -m cli.main alerts rules
+python -m cli.main alerts test
+```
+
+Alert rules generate local notification history from radar, watchlist, and scan changes. They are deduplicated and cannot execute trades. See `docs/alert_rules.md`.
 
 ## Test
 

@@ -32,6 +32,7 @@ addopts = "-ra"
 
 [tool.setuptools]
 packages = [
+    "alerts",
     "agents",
     "cli",
     "config",

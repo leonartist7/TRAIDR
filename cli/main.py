@@ -60,6 +60,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     alerts_parser = subparsers.add_parser("alerts", help="Show local alert history.")
     alerts_parser.add_argument("--limit", type=int, default=10)
+    alert_subparsers = alerts_parser.add_subparsers(dest="alert_command")
+    alert_subparsers.add_parser("test", help="Run fixture alert rules and store local alert history.")
+    alert_subparsers.add_parser("rules", help="List configured research alert rules.")
 
     subparsers.add_parser("dashboard", help="Print the safe Streamlit dashboard launch command.")
     subparsers.add_parser("scheduler-once", help="Run due local research scheduler tasks once.")
@@ -120,7 +123,12 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "report":
         result = commands.report(args.database, report_type=args.type, limit=args.limit)
     elif args.command == "alerts":
-        result = commands.alerts(args.database, limit=args.limit)
+        if args.alert_command == "test":
+            result = commands.alerts_test(args.database)
+        elif args.alert_command == "rules":
+            result = commands.alerts_rules()
+        else:
+            result = commands.alerts(args.database, limit=args.limit)
     elif args.command == "dashboard":
         result = commands.dashboard(args.database)
     elif args.command == "scheduler-once":

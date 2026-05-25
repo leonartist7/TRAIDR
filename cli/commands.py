@@ -9,6 +9,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from alerts.rules import ResearchAlertSnapshot, all_rule_descriptions
+from alerts.rule_engine import ResearchAlertRuleEngine
 from data_pipeline.scan_models import MarketScanCandidate
 from agents.agent_bus import run_agent_bus
 from agents.liquidity_agent import LiquidityAgent
@@ -32,6 +34,9 @@ from token_detail.detail_builder import build_token_detail
 from token_detail.formatters import format_token_detail
 from watchlist.repository import WatchlistRepository
 from watchlist.service import WatchlistService
+from notifications.dedupe import AlertDeduper
+from notifications.dispatcher import NotificationDispatcher
+from notifications.history import AlertHistory
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS_PATH = ROOT / "config" / "settings.yaml"
@@ -460,6 +465,77 @@ def alerts(database: str | None = None, *, limit: int = 10) -> CommandResult:
     return CommandResult(0, section("Local Alerts", records_table(rows, empty="No local alert history found.").splitlines()))
 
 
+def alerts_rules() -> CommandResult:
+    return CommandResult(
+        0,
+        section("Alert Rules", records_table(all_rule_descriptions()).splitlines()),
+    )
+
+
+def alerts_test(database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    now = datetime.now(timezone.utc)
+    previous = ResearchAlertSnapshot(
+        subject_id="fixture-sol-usdc",
+        state="WATCH",
+        opportunity_score=40.0,
+        risk_score=20.0,
+        liquidity_usd=Decimal("12000"),
+        data_quality="sufficient",
+        safety_complete=True,
+    )
+    current = ResearchAlertSnapshot(
+        subject_id="fixture-sol-usdc",
+        state="ALERT",
+        opportunity_score=62.0,
+        risk_score=38.0,
+        liquidity_usd=Decimal("8000"),
+        data_quality="sufficient",
+        safety_complete=False,
+    )
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        repository = IntelligenceRepository(store.connection)
+        dispatcher = NotificationDispatcher(
+            history=AlertHistory(repository),
+            deduper=AlertDeduper(_existing_alert_fingerprints(store)),
+        )
+        result = ResearchAlertRuleEngine(dispatcher).evaluate_and_dispatch(
+            previous=previous,
+            current=current,
+            now=now,
+        )
+    rows = [
+        {
+            "rule_id": match.rule_id.value,
+            "severity": match.severity,
+            "subject_id": match.subject_id,
+            "can_execute_trades": match.can_execute_trades,
+        }
+        for match in result.matches
+    ]
+    return CommandResult(
+        0,
+        "\n\n".join(
+            (
+                section(
+                    "Alert Rule Test",
+                    key_values(
+                        {
+                            "database": db_path,
+                            "matches": len(result.matches),
+                            "send_results": len(result.send_results),
+                            "alerts_created": result.alerts_created,
+                            "can_execute_trades": result.can_execute_trades,
+                        }
+                    ).splitlines(),
+                ),
+                section("Matched Rules", records_table(rows, empty="No alert rules matched.").splitlines()),
+            )
+        ),
+    )
+
+
 def dashboard(database: str | None = None) -> CommandResult:
     db_path = _database_path(database)
     return CommandResult(
@@ -679,3 +755,11 @@ def _latest_scheduler_runs(store: DuckDBStore) -> dict[str, datetime | None]:
         """
     ).fetchall()
     return {row[0]: row[1].replace(tzinfo=timezone.utc) if row[1] else None for row in rows}
+
+
+def _existing_alert_fingerprints(store: DuckDBStore) -> tuple[str, ...]:
+    tables = list_tables(store.connection)
+    if "notification_alerts" not in tables:
+        return ()
+    rows = store.execute("SELECT DISTINCT fingerprint FROM notification_alerts").fetchall()
+    return tuple(str(row[0]) for row in rows)
