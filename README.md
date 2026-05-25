@@ -159,6 +159,20 @@ TRAIDR includes deterministic opportunity score v2 and candidate lifecycle track
 
 These are research-only layers and cannot execute trades. See `docs/scoring_model.md` and `docs/lifecycle.md`.
 
+## Research Thesis Notes
+
+TRAIDR can generate structured research thesis notes for radar candidates:
+
+- thesis summary
+- opportunity drivers
+- risk factors
+- invalidation conditions
+- watch conditions
+- exit warning conditions
+- confidence and data gaps
+
+The thesis generator is not financial advice, does not execute trades, and always includes risk and invalidation notes. See `docs/thesis.md`.
+
 ## Market Scan
 
 Run read-only fixture market scan and radar conversion:

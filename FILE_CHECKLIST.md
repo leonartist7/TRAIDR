@@ -103,6 +103,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `lifecycle/models.py` | Candidate lifecycle state and event models | no | complete |
 | `lifecycle/tracker.py` | Append-only lifecycle event tracker | no | complete |
 | `lifecycle/transitions.py` | Deterministic lifecycle transition detection | no | complete |
+| `thesis/__init__.py` | Thesis package marker | no | complete |
+| `thesis/models.py` | Structured research thesis models | no | complete |
+| `thesis/generator.py` | Deterministic radar thesis generator | no | complete |
+| `thesis/invalidation.py` | Thesis invalidation and exit-warning rules | no | complete |
 | `alerts/__init__.py` | Alert rules package marker | no | complete |
 | `alerts/rules.py` | Research alert rule definitions | no | complete |
 | `alerts/rule_engine.py` | Local alert rule evaluation and dispatch | no | complete |
@@ -205,6 +209,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/smart_wallet_lite.md` | Smart-wallet lite usage and safety notes | no | complete |
 | `docs/scoring_model.md` | Opportunity score v2 model notes | no | complete |
 | `docs/lifecycle.md` | Candidate lifecycle tracking notes | no | complete |
+| `docs/thesis.md` | Structured research thesis notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
 | `dashboard/app.py` | Read-only Streamlit dashboard entry point | no | complete |
 | `dashboard/components.py` | Dashboard display components | no | complete |
@@ -226,6 +231,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_reason_explainer.py` | Score explanation tests | no | complete |
 | `tests/unit/test_lifecycle_tracker.py` | Lifecycle tracker persistence tests | no | complete |
 | `tests/unit/test_lifecycle_transitions.py` | Lifecycle transition detection tests | no | complete |
+| `tests/unit/test_thesis_generator.py` | Research thesis generation tests | no | complete |
+| `tests/unit/test_invalidation.py` | Thesis invalidation rule tests | no | complete |
 | `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |
 | `tests/unit/test_coingecko_adapter.py` | CoinGecko read-only adapter tests | no | complete |
 | `tests/unit/test_defillama_adapter.py` | DefiLlama read-only adapter tests | no | complete |

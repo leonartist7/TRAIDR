@@ -55,6 +55,7 @@ packages = [
     "sentiment",
     "storage",
     "technicals",
+    "thesis",
     "token_detail",
     "utils",
     "watchlist",
