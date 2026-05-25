@@ -95,6 +95,14 @@ Status values are `not_started`, `partial`, or `complete`.
 | `reports/report_models.py` | Read-only report state models | no | complete |
 | `reports/daily_briefing.py` | DuckDB-backed daily intelligence briefing builder | no | complete |
 | `reports/formatters.py` | Daily briefing terminal formatter | no | complete |
+| `scoring/__init__.py` | Scoring package marker | no | complete |
+| `scoring/opportunity_score.py` | Opportunity score v2 research model | no | complete |
+| `scoring/risk_adjusted_score.py` | Deterministic risk-adjusted scoring helper | no | complete |
+| `scoring/reason_explainer.py` | Human score explanation helper | no | complete |
+| `lifecycle/__init__.py` | Lifecycle package marker | no | complete |
+| `lifecycle/models.py` | Candidate lifecycle state and event models | no | complete |
+| `lifecycle/tracker.py` | Append-only lifecycle event tracker | no | complete |
+| `lifecycle/transitions.py` | Deterministic lifecycle transition detection | no | complete |
 | `alerts/__init__.py` | Alert rules package marker | no | complete |
 | `alerts/rules.py` | Research alert rule definitions | no | complete |
 | `alerts/rule_engine.py` | Local alert rule evaluation and dispatch | no | complete |
@@ -195,6 +203,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/news_macro_sources.md` | Read-only news and macro adapter usage | no | complete |
 | `docs/sentiment_lite.md` | Sentiment-lite usage and safety notes | no | complete |
 | `docs/smart_wallet_lite.md` | Smart-wallet lite usage and safety notes | no | complete |
+| `docs/scoring_model.md` | Opportunity score v2 model notes | no | complete |
+| `docs/lifecycle.md` | Candidate lifecycle tracking notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
 | `dashboard/app.py` | Read-only Streamlit dashboard entry point | no | complete |
 | `dashboard/components.py` | Dashboard display components | no | complete |
@@ -211,6 +221,11 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_dashboard_queries.py` | Read-only dashboard query tests | no | complete |
 | `tests/unit/test_query_parser.py` | Ask TRAIDR query parser tests | no | complete |
 | `tests/unit/test_local_answerer.py` | Ask TRAIDR local answer tests | no | complete |
+| `tests/unit/test_opportunity_score.py` | Opportunity score v2 tests | no | complete |
+| `tests/unit/test_risk_adjusted_score.py` | Risk-adjusted score tests | no | complete |
+| `tests/unit/test_reason_explainer.py` | Score explanation tests | no | complete |
+| `tests/unit/test_lifecycle_tracker.py` | Lifecycle tracker persistence tests | no | complete |
+| `tests/unit/test_lifecycle_transitions.py` | Lifecycle transition detection tests | no | complete |
 | `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |
 | `tests/unit/test_coingecko_adapter.py` | CoinGecko read-only adapter tests | no | complete |
 | `tests/unit/test_defillama_adapter.py` | DefiLlama read-only adapter tests | no | complete |

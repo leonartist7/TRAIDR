@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import duckdb
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 EXPECTED_TABLES = frozenset(
     {
         "agent_analyses",
@@ -15,6 +15,7 @@ EXPECTED_TABLES = frozenset(
         "cio_decisions",
         "evidence_snapshots",
         "macro_news_events",
+        "lifecycle_events",
         "manual_portfolio_entries",
         "notification_alerts",
         "opportunity_radar_states",
@@ -223,6 +224,18 @@ _DDL: tuple[str, ...] = (
         radar_state VARCHAR NOT NULL,
         opportunity_score DOUBLE NOT NULL,
         risk_score DOUBLE NOT NULL,
+        reason_codes_json VARCHAR NOT NULL,
+        payload_json VARCHAR NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS lifecycle_events (
+        event_id VARCHAR PRIMARY KEY,
+        recorded_at TIMESTAMP NOT NULL,
+        subject_id VARCHAR NOT NULL,
+        event_type VARCHAR NOT NULL,
+        from_state VARCHAR,
+        to_state VARCHAR NOT NULL,
         reason_codes_json VARCHAR NOT NULL,
         payload_json VARCHAR NOT NULL
     )

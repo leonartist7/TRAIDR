@@ -147,6 +147,18 @@ TRAIDR includes local sentiment-lite feature extraction and fixture wallet-histo
 
 See `docs/sentiment_lite.md` and `docs/smart_wallet_lite.md`.
 
+## Scoring And Lifecycle
+
+TRAIDR includes deterministic opportunity score v2 and candidate lifecycle tracking:
+
+- Scoring combines liquidity, volume, technicals, safety, optional wallet/sentiment/macro evidence, and data quality.
+- High rug risk caps opportunity.
+- Missing critical safety data caps confidence.
+- Low liquidity caps risk-adjusted score.
+- Lifecycle events track discovered, watch, alert, review, stale, avoid, exit-risk, repeated appearance, risk increase, and liquidity changes.
+
+These are research-only layers and cannot execute trades. See `docs/scoring_model.md` and `docs/lifecycle.md`.
+
 ## Market Scan
 
 Run read-only fixture market scan and radar conversion:
