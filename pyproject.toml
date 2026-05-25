@@ -42,6 +42,7 @@ packages = [
     "memory",
     "notifications",
     "onchain",
+    "portfolio",
     "radar",
     "risk",
     "reports",

@@ -37,6 +37,8 @@ from watchlist.service import WatchlistService
 from notifications.dedupe import AlertDeduper
 from notifications.dispatcher import NotificationDispatcher
 from notifications.history import AlertHistory
+from portfolio.repository import PortfolioRepository
+from portfolio.service import PortfolioService
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS_PATH = ROOT / "config" / "settings.yaml"
@@ -536,6 +538,115 @@ def alerts_test(database: str | None = None) -> CommandResult:
     )
 
 
+def portfolio_add(
+    symbol: str,
+    *,
+    database: str | None = None,
+    entry_price: Decimal,
+    size_usd: Decimal,
+    thesis: str,
+    chain: str = "unknown",
+    pair_ref: str | None = None,
+    stop_zone: str = "",
+    take_profit_zone: str = "",
+    conviction: str = "medium",
+    risk_level: str = "unknown",
+    notes: str = "",
+) -> CommandResult:
+    db_path = _database_path(database)
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        service = PortfolioService(PortfolioRepository(store.connection))
+        entry = service.add(
+            symbol=symbol,
+            entry_price=entry_price,
+            size_usd=size_usd,
+            thesis=thesis,
+            chain=chain,
+            pair_ref=pair_ref,
+            stop_zone=stop_zone,
+            take_profit_zone=take_profit_zone,
+            conviction=conviction,
+            risk_level=risk_level,
+            notes=notes,
+        )
+    return CommandResult(
+        0,
+        section("Portfolio Add", key_values(entry.to_dict()).splitlines()),
+    )
+
+
+def portfolio_list(*, database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    if not db_path.exists():
+        return CommandResult(0, section("Manual Portfolio", ["No local manual portfolio found."]))
+    with DuckDBStore(db_path, read_only=True) as store:
+        tables = list_tables(store.connection)
+        entries = (
+            PortfolioRepository(store.connection).list_entries()
+            if "manual_portfolio_entries" in tables
+            else ()
+        )
+    rows = [entry.to_dict() for entry in entries]
+    return CommandResult(0, section("Manual Portfolio", records_table(rows, empty="No active manual portfolio entries found.").splitlines()))
+
+
+def portfolio_remove(entry_id: str, *, database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        removed = PortfolioService(PortfolioRepository(store.connection)).remove(entry_id)
+    return CommandResult(
+        0,
+        section(
+            "Portfolio Remove",
+            key_values(
+                {
+                    "entry_id": entry_id,
+                    "removed": removed,
+                    "can_execute_trades": False,
+                }
+            ).splitlines(),
+        ),
+    )
+
+
+def portfolio_report(*, database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    if not db_path.exists():
+        report = PortfolioService(_EmptyPortfolioRepository()).report()
+    else:
+        with DuckDBStore(db_path, read_only=True) as store:
+            tables = list_tables(store.connection)
+            if "manual_portfolio_entries" not in tables:
+                report = PortfolioService(_EmptyPortfolioRepository()).report()
+            else:
+                report = PortfolioService(PortfolioRepository(store.connection)).report()
+    return CommandResult(
+        0,
+        "\n\n".join(
+            (
+                section(
+                    "Portfolio Report",
+                    key_values(
+                        {
+                            "total_exposure_usd": report.total_exposure_usd,
+                            "concentration_risk": report.concentration_risk,
+                            "meme_exposure_usd": report.meme_exposure_usd,
+                            "chain_exposure": report.chain_exposure,
+                            "reason_codes": report.reason_codes,
+                            "can_execute_trades": report.can_execute_trades,
+                        }
+                    ).splitlines(),
+                ),
+                section("Thesis Warnings", bullet_list(report.thesis_warnings).splitlines()),
+                section("Stale Thesis Warnings", bullet_list(report.stale_thesis_warnings).splitlines()),
+                section("No Execution Actions", ["Manual portfolio records are local analysis only."]),
+            )
+        ),
+    )
+
+
 def dashboard(database: str | None = None) -> CommandResult:
     db_path = _database_path(database)
     return CommandResult(
@@ -763,3 +874,8 @@ def _existing_alert_fingerprints(store: DuckDBStore) -> tuple[str, ...]:
         return ()
     rows = store.execute("SELECT DISTINCT fingerprint FROM notification_alerts").fetchall()
     return tuple(str(row[0]) for row in rows)
+
+
+class _EmptyPortfolioRepository:
+    def list_entries(self, *, active_only: bool = True):
+        return ()

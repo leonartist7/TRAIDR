@@ -64,6 +64,25 @@ def build_parser() -> argparse.ArgumentParser:
     alert_subparsers.add_parser("test", help="Run fixture alert rules and store local alert history.")
     alert_subparsers.add_parser("rules", help="List configured research alert rules.")
 
+    portfolio_parser = subparsers.add_parser("portfolio", help="Manage manual local portfolio analysis entries.")
+    portfolio_subparsers = portfolio_parser.add_subparsers(dest="portfolio_command", required=True)
+    portfolio_add_parser = portfolio_subparsers.add_parser("add", help="Add a manual portfolio entry.")
+    portfolio_add_parser.add_argument("symbol")
+    portfolio_add_parser.add_argument("--entry", required=True, type=_decimal_arg, dest="entry_price")
+    portfolio_add_parser.add_argument("--size-usd", required=True, type=_decimal_arg)
+    portfolio_add_parser.add_argument("--thesis", required=True)
+    portfolio_add_parser.add_argument("--chain", default="unknown")
+    portfolio_add_parser.add_argument("--pair-ref")
+    portfolio_add_parser.add_argument("--stop-zone", default="")
+    portfolio_add_parser.add_argument("--take-profit-zone", default="")
+    portfolio_add_parser.add_argument("--conviction", default="medium")
+    portfolio_add_parser.add_argument("--risk-level", default="unknown")
+    portfolio_add_parser.add_argument("--notes", default="")
+    portfolio_subparsers.add_parser("list", help="List active manual portfolio entries.")
+    portfolio_remove_parser = portfolio_subparsers.add_parser("remove", help="Deactivate a manual portfolio entry.")
+    portfolio_remove_parser.add_argument("entry_id")
+    portfolio_subparsers.add_parser("report", help="Show manual portfolio exposure report.")
+
     subparsers.add_parser("dashboard", help="Print the safe Streamlit dashboard launch command.")
     subparsers.add_parser("scheduler-once", help="Run due local research scheduler tasks once.")
 
@@ -129,6 +148,30 @@ def main(argv: list[str] | None = None) -> int:
             result = commands.alerts_rules()
         else:
             result = commands.alerts(args.database, limit=args.limit)
+    elif args.command == "portfolio":
+        if args.portfolio_command == "add":
+            result = commands.portfolio_add(
+                args.symbol,
+                database=args.database,
+                entry_price=args.entry_price,
+                size_usd=args.size_usd,
+                thesis=args.thesis,
+                chain=args.chain,
+                pair_ref=args.pair_ref,
+                stop_zone=args.stop_zone,
+                take_profit_zone=args.take_profit_zone,
+                conviction=args.conviction,
+                risk_level=args.risk_level,
+                notes=args.notes,
+            )
+        elif args.portfolio_command == "list":
+            result = commands.portfolio_list(database=args.database)
+        elif args.portfolio_command == "remove":
+            result = commands.portfolio_remove(args.entry_id, database=args.database)
+        elif args.portfolio_command == "report":
+            result = commands.portfolio_report(database=args.database)
+        else:  # pragma: no cover - argparse prevents this branch
+            raise AssertionError(f"unsupported portfolio command: {args.portfolio_command}")
     elif args.command == "dashboard":
         result = commands.dashboard(args.database)
     elif args.command == "scheduler-once":
@@ -153,6 +196,12 @@ def _normalize_global_database_arg(argv: list[str] | None) -> list[str] | None:
     value = args[index + 1]
     del args[index : index + 2]
     return ["--database", value, *args]
+
+
+def _decimal_arg(value: str):
+    from decimal import Decimal
+
+    return Decimal(value)
 
 
 if __name__ == "__main__":

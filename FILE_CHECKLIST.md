@@ -91,6 +91,11 @@ Status values are `not_started`, `partial`, or `complete`.
 | `alerts/rules.py` | Research alert rule definitions | no | complete |
 | `alerts/rule_engine.py` | Local alert rule evaluation and dispatch | no | complete |
 | `alerts/alert_templates.py` | Research-only alert message templates | no | complete |
+| `portfolio/__init__.py` | Manual portfolio package marker | no | complete |
+| `portfolio/models.py` | Manual portfolio entry and report models | no | complete |
+| `portfolio/repository.py` | DuckDB-backed manual portfolio repository | no | complete |
+| `portfolio/service.py` | Manual portfolio service layer | no | complete |
+| `portfolio/exposure.py` | Manual portfolio exposure analytics | no | complete |
 | `watchlist/__init__.py` | Watchlist package marker | no | complete |
 | `watchlist/models.py` | Local watchlist models | no | complete |
 | `watchlist/repository.py` | DuckDB-backed watchlist repository | no | complete |
@@ -167,6 +172,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/daily_briefing.md` | Daily briefing report usage | no | complete |
 | `docs/watchlist.md` | Local watchlist usage and safety notes | no | complete |
 | `docs/alert_rules.md` | Research alert rule usage and safety notes | no | complete |
+| `docs/portfolio.md` | Manual portfolio tracker usage and safety notes | no | complete |
 | `docs/notifications.md` | Local and optional notification boundaries | no | complete |
 | `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
@@ -187,6 +193,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_daily_briefing.py` | Daily briefing report tests | no | complete |
 | `tests/unit/test_watchlist_service.py` | Watchlist service and alert tests | no | complete |
 | `tests/unit/test_alert_rules_engine.py` | Research alert rule engine tests | no | complete |
+| `tests/unit/test_portfolio_service.py` | Manual portfolio service tests | no | complete |
+| `tests/unit/test_portfolio_exposure.py` | Manual portfolio exposure tests | no | complete |
 | `tests/unit/test_scan_command_real_mode.py` | CLI real scan mode tests with mocked source | no | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
 | `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |
@@ -224,6 +232,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/integration/test_storage_schema.py` | DuckDB schema initialization flow | yes | complete |
 | `tests/integration/test_storage_flow.py` | DuckDB integration flow | yes | complete |
 | `tests/integration/test_watchlist_storage.py` | Watchlist DuckDB persistence flow | no | complete |
+| `tests/integration/test_portfolio_storage.py` | Manual portfolio DuckDB persistence flow | no | complete |
 | `tests/integration/test_intelligence_persistence.py` | Intelligence DuckDB persistence flow | no | complete |
 | `tests/integration/test_execution_flow.py` | Risk-gated execution integration flow | yes | complete |
 | `tests/integration/test_simulation_flow.py` | Paper broker integration flow | yes | complete |

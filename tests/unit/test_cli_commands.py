@@ -1,4 +1,5 @@
 from pathlib import Path
+from decimal import Decimal
 
 from cli.commands import (
     alerts,
@@ -8,6 +9,10 @@ from cli.commands import (
     dashboard,
     discover,
     inspect,
+    portfolio_add,
+    portfolio_list,
+    portfolio_remove,
+    portfolio_report,
     radar,
     scan,
     report,
@@ -203,6 +208,30 @@ def test_alerts_test_cli_records_local_alerts(tmp_path: Path) -> None:
     assert "Alert Rule Test" in result.output
     assert "can_execute_trades: False" in result.output
     assert "fixture-sol-usdc" in history.output
+
+
+def test_portfolio_cli_add_list_report_remove(tmp_path: Path) -> None:
+    database = tmp_path / "portfolio-cli.duckdb"
+
+    added = portfolio_add(
+        "BONK",
+        database=str(database),
+        entry_price=Decimal("0.001"),
+        size_usd=Decimal("20"),
+        thesis="meme thesis",
+        chain="solana",
+        pair_ref="solana/BONK",
+    )
+    listed = portfolio_list(database=str(database))
+    report = portfolio_report(database=str(database))
+    entry_id = "manual_portfolio_" + listed.output.split("manual_portfolio_", 1)[1].split()[0]
+    removed = portfolio_remove(entry_id, database=str(database))
+
+    assert added.exit_code == 0
+    assert "can_execute_trades: False" in added.output
+    assert "BONK" in listed.output
+    assert "total_exposure_usd" in report.output
+    assert "removed: True" in removed.output
 
 
 def test_dashboard_prints_launch_command_without_launching(tmp_path: Path) -> None:

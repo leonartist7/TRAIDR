@@ -71,6 +71,7 @@ traidr discover --fixture
 traidr token --fixture
 traidr briefing
 traidr watch list
+traidr portfolio report
 traidr dashboard
 traidr scheduler-once
 ```
@@ -179,6 +180,19 @@ python -m cli.main alerts test
 ```
 
 Alert rules generate local notification history from radar, watchlist, and scan changes. They are deduplicated and cannot execute trades. See `docs/alert_rules.md`.
+
+## Manual Portfolio
+
+Track local manual positions for personal analysis:
+
+```bash
+python -m cli.main portfolio add BONK --entry 0.001 --size-usd 20 --thesis "meme momentum"
+python -m cli.main portfolio list
+python -m cli.main portfolio remove <entry_id>
+python -m cli.main portfolio report
+```
+
+Manual portfolio tracking does not connect to exchanges or wallets and cannot execute trades. See `docs/portfolio.md`.
 
 ## Test
 
