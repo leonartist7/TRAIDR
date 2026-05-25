@@ -82,6 +82,8 @@ def build_parser() -> argparse.ArgumentParser:
     portfolio_remove_parser = portfolio_subparsers.add_parser("remove", help="Deactivate a manual portfolio entry.")
     portfolio_remove_parser.add_argument("entry_id")
     portfolio_subparsers.add_parser("report", help="Show manual portfolio exposure report.")
+    portfolio_subparsers.add_parser("monitor", help="Monitor manual positions against local sell-risk evidence.")
+    portfolio_subparsers.add_parser("sell-risk", help="Show manual position sell-risk decisions.")
 
     subparsers.add_parser("dashboard", help="Print the safe Streamlit dashboard launch command.")
     subparsers.add_parser("scheduler-once", help="Run due local research scheduler tasks once.")
@@ -170,6 +172,10 @@ def main(argv: list[str] | None = None) -> int:
             result = commands.portfolio_remove(args.entry_id, database=args.database)
         elif args.portfolio_command == "report":
             result = commands.portfolio_report(database=args.database)
+        elif args.portfolio_command == "monitor":
+            result = commands.portfolio_monitor(database=args.database)
+        elif args.portfolio_command == "sell-risk":
+            result = commands.portfolio_monitor(database=args.database)
         else:  # pragma: no cover - argparse prevents this branch
             raise AssertionError(f"unsupported portfolio command: {args.portfolio_command}")
     elif args.command == "dashboard":

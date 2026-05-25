@@ -96,6 +96,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `portfolio/repository.py` | DuckDB-backed manual portfolio repository | no | complete |
 | `portfolio/service.py` | Manual portfolio service layer | no | complete |
 | `portfolio/exposure.py` | Manual portfolio exposure analytics | no | complete |
+| `portfolio/sell_risk.py` | Manual position sell-risk evaluator | no | complete |
+| `portfolio/position_monitor.py` | DuckDB-backed manual position monitor | no | complete |
 | `watchlist/__init__.py` | Watchlist package marker | no | complete |
 | `watchlist/models.py` | Local watchlist models | no | complete |
 | `watchlist/repository.py` | DuckDB-backed watchlist repository | no | complete |
@@ -173,6 +175,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/watchlist.md` | Local watchlist usage and safety notes | no | complete |
 | `docs/alert_rules.md` | Research alert rule usage and safety notes | no | complete |
 | `docs/portfolio.md` | Manual portfolio tracker usage and safety notes | no | complete |
+| `docs/sell_risk.md` | Manual position sell-risk monitor usage | no | complete |
 | `docs/notifications.md` | Local and optional notification boundaries | no | complete |
 | `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
@@ -195,6 +198,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_alert_rules_engine.py` | Research alert rule engine tests | no | complete |
 | `tests/unit/test_portfolio_service.py` | Manual portfolio service tests | no | complete |
 | `tests/unit/test_portfolio_exposure.py` | Manual portfolio exposure tests | no | complete |
+| `tests/unit/test_sell_risk.py` | Manual position sell-risk evaluator tests | no | complete |
+| `tests/unit/test_position_monitor.py` | Manual position monitor tests | no | complete |
 | `tests/unit/test_scan_command_real_mode.py` | CLI real scan mode tests with mocked source | no | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
 | `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |

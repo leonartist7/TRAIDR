@@ -190,9 +190,13 @@ python -m cli.main portfolio add BONK --entry 0.001 --size-usd 20 --thesis "meme
 python -m cli.main portfolio list
 python -m cli.main portfolio remove <entry_id>
 python -m cli.main portfolio report
+python -m cli.main portfolio monitor
+python -m cli.main portfolio sell-risk
 ```
 
 Manual portfolio tracking does not connect to exchanges or wallets and cannot execute trades. See `docs/portfolio.md`.
+
+The sell-risk monitor reviews manual positions against local evidence and returns research states such as `HOLD_POSITION`, `REVIEW_POSITION`, `REDUCE_RISK`, `EXIT_CANDIDATE`, or `INSUFFICIENT_DATA`. It never executes trades. See `docs/sell_risk.md`.
 
 ## Test
 

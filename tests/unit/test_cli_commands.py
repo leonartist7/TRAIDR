@@ -11,6 +11,7 @@ from cli.commands import (
     inspect,
     portfolio_add,
     portfolio_list,
+    portfolio_monitor,
     portfolio_remove,
     portfolio_report,
     radar,
@@ -232,6 +233,14 @@ def test_portfolio_cli_add_list_report_remove(tmp_path: Path) -> None:
     assert "BONK" in listed.output
     assert "total_exposure_usd" in report.output
     assert "removed: True" in removed.output
+
+
+def test_portfolio_monitor_empty_is_non_executing(tmp_path: Path) -> None:
+    result = portfolio_monitor(database=str(tmp_path / "empty-monitor.duckdb"))
+
+    assert result.exit_code == 0
+    assert "Portfolio Sell-Risk Monitor" in result.output
+    assert "can_execute_trades: False" in result.output
 
 
 def test_dashboard_prints_launch_command_without_launching(tmp_path: Path) -> None:

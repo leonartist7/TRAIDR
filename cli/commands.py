@@ -39,6 +39,7 @@ from notifications.dispatcher import NotificationDispatcher
 from notifications.history import AlertHistory
 from portfolio.repository import PortfolioRepository
 from portfolio.service import PortfolioService
+from portfolio.position_monitor import monitor_positions
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS_PATH = ROOT / "config" / "settings.yaml"
@@ -642,6 +643,39 @@ def portfolio_report(*, database: str | None = None) -> CommandResult:
                 section("Thesis Warnings", bullet_list(report.thesis_warnings).splitlines()),
                 section("Stale Thesis Warnings", bullet_list(report.stale_thesis_warnings).splitlines()),
                 section("No Execution Actions", ["Manual portfolio records are local analysis only."]),
+            )
+        ),
+    )
+
+
+def portfolio_monitor(*, database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    if not db_path.exists():
+        rows = []
+    else:
+        with DuckDBStore(db_path, read_only=True) as store:
+            tables = list_tables(store.connection)
+            rows = (
+                [decision.to_dict() for decision in monitor_positions(store.connection)]
+                if "manual_portfolio_entries" in tables
+                else []
+            )
+    return CommandResult(
+        0,
+        "\n\n".join(
+            (
+                section(
+                    "Portfolio Sell-Risk Monitor",
+                    key_values(
+                        {
+                            "database": db_path,
+                            "positions": len(rows),
+                            "can_execute_trades": False,
+                        }
+                    ).splitlines(),
+                ),
+                section("Sell-Risk Decisions", records_table(rows, empty="No active manual positions found.").splitlines()),
+                section("No Execution Actions", ["Sell-risk output is research-only and cannot execute trades."]),
             )
         ),
     )
