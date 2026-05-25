@@ -83,6 +83,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `notifications/dedupe.py` | Alert fingerprint deduplication | no | complete |
 | `notifications/senders.py` | Optional injected notification sender boundaries | no | complete |
 | `notifications/dispatcher.py` | Deduping notification dispatcher | no | complete |
+| `reports/__init__.py` | Reports package marker | no | complete |
+| `reports/report_models.py` | Read-only report state models | no | complete |
+| `reports/daily_briefing.py` | DuckDB-backed daily intelligence briefing builder | no | complete |
+| `reports/formatters.py` | Daily briefing terminal formatter | no | complete |
 | `scheduler/__init__.py` | Research scheduler package marker | no | complete |
 | `scheduler/tasks.py` | Deterministic research task intervals | no | complete |
 | `scheduler/research_scheduler.py` | Testable due-task runner | no | complete |
@@ -152,6 +156,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/DEXSCREENER_SCAN_REPORT.md` | Read-only DexScreener scan report | no | complete |
 | `docs/token_discovery.md` | Read-only token discovery usage | no | complete |
 | `docs/token_detail.md` | Read-only token detail usage | no | complete |
+| `docs/daily_briefing.md` | Daily briefing report usage | no | complete |
 | `docs/notifications.md` | Local and optional notification boundaries | no | complete |
 | `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
@@ -169,6 +174,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_market_scan.py` | Read-only market scan tests | no | complete |
 | `tests/unit/test_token_discovery.py` | Read-only token discovery tests | no | complete |
 | `tests/unit/test_token_detail.py` | Read-only token detail card tests | no | complete |
+| `tests/unit/test_daily_briefing.py` | Daily briefing report tests | no | complete |
 | `tests/unit/test_scan_command_real_mode.py` | CLI real scan mode tests with mocked source | no | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
 | `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |

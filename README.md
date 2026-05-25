@@ -68,6 +68,7 @@ traidr alerts
 traidr scan --fixture
 traidr discover --fixture
 traidr token --fixture
+traidr briefing
 traidr dashboard
 traidr scheduler-once
 ```
@@ -140,6 +141,17 @@ python -m cli.main token --pair-ref solana/PAIR_ADDRESS --source dexscreener --d
 ```
 
 Token detail cards include market metrics, radar state, anti-rug evidence status, reason codes, and plain-English research notes. They are research-only and always include `can_execute_trades: False`. See `docs/token_detail.md`.
+
+## Daily Briefing
+
+Generate a read-only local daily intelligence briefing from DuckDB:
+
+```bash
+python -m cli.main briefing
+python -m cli.main briefing --database storage/duckdb/traidr.duckdb
+```
+
+Briefings summarize market scan evidence, radar candidates, alerts, simulation results, safety status, missing data warnings, and suggested watchlists. They never create execution actions. See `docs/daily_briefing.md`.
 
 ## Test
 

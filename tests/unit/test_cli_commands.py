@@ -2,6 +2,7 @@ from pathlib import Path
 
 from cli.commands import (
     alerts,
+    briefing,
     dashboard,
     discover,
     inspect,
@@ -125,6 +126,15 @@ def test_token_detail_fixture_outputs_research_card() -> None:
     assert "Token Detail" in result.output
     assert "fixture-sol-usdc" in result.output
     assert "can_execute_trades: False" in result.output
+
+
+def test_briefing_missing_database_is_helpful(tmp_path: Path) -> None:
+    result = briefing(str(tmp_path / "missing-briefing.duckdb"))
+
+    assert result.exit_code == 0
+    assert "Daily Briefing" in result.output
+    assert "INSUFFICIENT_DATA" in result.output
+    assert "Next Commands" in result.output
 
 
 def test_report_reads_research_reports_after_scheduler_once(tmp_path: Path) -> None:

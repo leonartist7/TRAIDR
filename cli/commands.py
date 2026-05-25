@@ -20,6 +20,8 @@ from data_pipeline.token_discovery import default_dexscreener_discovery_transpor
 from radar.discovery_to_radar import discovery_candidates_to_radar
 from radar.scan_to_radar import scan_candidates_to_radar
 from radar.opportunity_radar import rank_watchlist
+from reports.daily_briefing import build_daily_briefing, empty_daily_briefing
+from reports.formatters import format_daily_briefing
 from scheduler.reports import build_research_report
 from scheduler.research_scheduler import ResearchScheduler
 from scripts.run_simulation import run_simulation
@@ -319,6 +321,16 @@ def token_detail(
         if store_context is not None:
             store_context.__exit__(None, None, None)
     return CommandResult(0, format_token_detail(report))
+
+
+def briefing(database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    if not db_path.exists():
+        report = empty_daily_briefing()
+        return CommandResult(0, format_daily_briefing(report))
+    with DuckDBStore(db_path, read_only=True) as store:
+        report = build_daily_briefing(store.connection)
+    return CommandResult(0, format_daily_briefing(report))
 
 
 def report(database: str | None = None, *, report_type: str = "daily", limit: int = 5) -> CommandResult:

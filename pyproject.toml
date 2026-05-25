@@ -43,6 +43,7 @@ packages = [
     "onchain",
     "radar",
     "risk",
+    "reports",
     "scheduler",
     "sentiment",
     "storage",

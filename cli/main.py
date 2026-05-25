@@ -41,6 +41,8 @@ def build_parser() -> argparse.ArgumentParser:
     token_parser.add_argument("--pair-ref", help="Pair reference for optional real-source token detail.")
     token_parser.add_argument("--source", choices=("dexscreener",), help="Optional real read-only token detail source.")
 
+    subparsers.add_parser("briefing", help="Generate a read-only daily intelligence briefing from DuckDB.")
+
     report_parser = subparsers.add_parser("report", help="Show research summaries.")
     report_parser.add_argument("--type", choices=("4h", "daily"), default="daily")
     report_parser.add_argument("--limit", type=int, default=5)
@@ -86,6 +88,8 @@ def main(argv: list[str] | None = None) -> int:
             pair_ref=args.pair_ref,
             source=args.source,
         )
+    elif args.command == "briefing":
+        result = commands.briefing(args.database)
     elif args.command == "report":
         result = commands.report(args.database, report_type=args.type, limit=args.limit)
     elif args.command == "alerts":
