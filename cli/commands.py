@@ -30,6 +30,8 @@ from storage.repositories import IntelligenceRepository, ResearchRepository
 from storage.schema import initialize_schema, list_tables
 from token_detail.detail_builder import build_token_detail
 from token_detail.formatters import format_token_detail
+from watchlist.repository import WatchlistRepository
+from watchlist.service import WatchlistService
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS_PATH = ROOT / "config" / "settings.yaml"
@@ -331,6 +333,104 @@ def briefing(database: str | None = None) -> CommandResult:
     with DuckDBStore(db_path, read_only=True) as store:
         report = build_daily_briefing(store.connection)
     return CommandResult(0, format_daily_briefing(report))
+
+
+def watch_add(
+    pair_ref: str,
+    *,
+    database: str | None = None,
+    note: str = "",
+    tags: tuple[str, ...] = (),
+) -> CommandResult:
+    db_path = _database_path(database)
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        service = WatchlistService(WatchlistRepository(store.connection))
+        entry = service.add(pair_ref, note=note, tags=tags)
+    return CommandResult(
+        0,
+        section(
+            "Watchlist Add",
+            key_values(
+                {
+                    "pair_ref": entry.pair_ref,
+                    "active": entry.active,
+                    "note": entry.note,
+                    "tags": entry.tags,
+                    "can_execute_trades": entry.can_execute_trades,
+                }
+            ).splitlines(),
+        ),
+    )
+
+
+def watch_list(*, database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    if not db_path.exists():
+        return CommandResult(0, section("Watchlist", ["No local watchlist found.", "Use `python -m cli.main watch add <pair_ref> --note \"...\"`."]))
+    with DuckDBStore(db_path, read_only=True) as store:
+        tables = list_tables(store.connection)
+        if "watchlist_entries" not in tables:
+            entries = ()
+        else:
+            entries = WatchlistRepository(store.connection).list_entries()
+    rows = [entry.to_dict() for entry in entries]
+    return CommandResult(0, section("Watchlist", records_table(rows, empty="No active watchlist entries found.").splitlines()))
+
+
+def watch_remove(pair_ref: str, *, database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        removed = WatchlistService(WatchlistRepository(store.connection)).remove(pair_ref)
+    return CommandResult(
+        0,
+        section(
+            "Watchlist Remove",
+            key_values(
+                {
+                    "pair_ref": pair_ref,
+                    "removed": removed,
+                    "can_execute_trades": False,
+                }
+            ).splitlines(),
+        ),
+    )
+
+
+def watch_scan(*, database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        service = WatchlistService(
+            WatchlistRepository(store.connection),
+            research_repository=ResearchRepository(store.connection),
+            intelligence_repository=IntelligenceRepository(store.connection),
+        )
+        result = service.scan()
+    return CommandResult(
+        0,
+        "\n\n".join(
+            (
+                section(
+                    "Watchlist Scan",
+                    key_values(
+                        {
+                            "status": result.status,
+                            "database": db_path,
+                            "alerts_created": len(result.alerts_created),
+                            "reason_codes": result.reason_codes,
+                            "can_execute_trades": result.can_execute_trades,
+                        }
+                    ).splitlines(),
+                ),
+                section(
+                    "Scanned Entries",
+                    records_table([record.to_dict() for record in result.scanned], empty="No watchlist entries scanned.").splitlines(),
+                ),
+            )
+        ),
+    )
 
 
 def report(database: str | None = None, *, report_type: str = "daily", limit: int = 5) -> CommandResult:

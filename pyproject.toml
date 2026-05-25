@@ -50,4 +50,5 @@ packages = [
     "technicals",
     "token_detail",
     "utils",
+    "watchlist",
 ]

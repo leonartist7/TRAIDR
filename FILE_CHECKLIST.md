@@ -87,6 +87,10 @@ Status values are `not_started`, `partial`, or `complete`.
 | `reports/report_models.py` | Read-only report state models | no | complete |
 | `reports/daily_briefing.py` | DuckDB-backed daily intelligence briefing builder | no | complete |
 | `reports/formatters.py` | Daily briefing terminal formatter | no | complete |
+| `watchlist/__init__.py` | Watchlist package marker | no | complete |
+| `watchlist/models.py` | Local watchlist models | no | complete |
+| `watchlist/repository.py` | DuckDB-backed watchlist repository | no | complete |
+| `watchlist/service.py` | Read-only watchlist scan and alert service | no | complete |
 | `scheduler/__init__.py` | Research scheduler package marker | no | complete |
 | `scheduler/tasks.py` | Deterministic research task intervals | no | complete |
 | `scheduler/research_scheduler.py` | Testable due-task runner | no | complete |
@@ -157,6 +161,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/token_discovery.md` | Read-only token discovery usage | no | complete |
 | `docs/token_detail.md` | Read-only token detail usage | no | complete |
 | `docs/daily_briefing.md` | Daily briefing report usage | no | complete |
+| `docs/watchlist.md` | Local watchlist usage and safety notes | no | complete |
 | `docs/notifications.md` | Local and optional notification boundaries | no | complete |
 | `docs/scheduler.md` | Deterministic research scheduler notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
@@ -175,6 +180,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_token_discovery.py` | Read-only token discovery tests | no | complete |
 | `tests/unit/test_token_detail.py` | Read-only token detail card tests | no | complete |
 | `tests/unit/test_daily_briefing.py` | Daily briefing report tests | no | complete |
+| `tests/unit/test_watchlist_service.py` | Watchlist service and alert tests | no | complete |
 | `tests/unit/test_scan_command_real_mode.py` | CLI real scan mode tests with mocked source | no | complete |
 | `tests/unit/test_source_registry.py` | Safe source registry tests | yes | complete |
 | `tests/unit/test_onchain_observations.py` | Anti-rug observation mapping tests | yes | complete |
@@ -211,6 +217,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_toon.py` | Payload boundary tests | yes | complete |
 | `tests/integration/test_storage_schema.py` | DuckDB schema initialization flow | yes | complete |
 | `tests/integration/test_storage_flow.py` | DuckDB integration flow | yes | complete |
+| `tests/integration/test_watchlist_storage.py` | Watchlist DuckDB persistence flow | no | complete |
 | `tests/integration/test_intelligence_persistence.py` | Intelligence DuckDB persistence flow | no | complete |
 | `tests/integration/test_execution_flow.py` | Risk-gated execution integration flow | yes | complete |
 | `tests/integration/test_simulation_flow.py` | Paper broker integration flow | yes | complete |

@@ -13,6 +13,9 @@ from cli.commands import (
     simulate,
     status,
     token_detail,
+    watch_add,
+    watch_list,
+    watch_remove,
 )
 from cli.main import main
 from notifications.models import Alert, AlertSeverity, SendResult
@@ -135,6 +138,19 @@ def test_briefing_missing_database_is_helpful(tmp_path: Path) -> None:
     assert "Daily Briefing" in result.output
     assert "INSUFFICIENT_DATA" in result.output
     assert "Next Commands" in result.output
+
+
+def test_watchlist_cli_add_list_remove(tmp_path: Path) -> None:
+    database = tmp_path / "watch-cli.duckdb"
+
+    added = watch_add("solana/PAIR123", database=str(database), note="watch", tags=("solana",))
+    listed = watch_list(database=str(database))
+    removed = watch_remove("solana/PAIR123", database=str(database))
+
+    assert added.exit_code == 0
+    assert "can_execute_trades: False" in added.output
+    assert "solana/PAIR123" in listed.output
+    assert "removed: True" in removed.output
 
 
 def test_report_reads_research_reports_after_scheduler_once(tmp_path: Path) -> None:

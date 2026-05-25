@@ -69,6 +69,7 @@ traidr scan --fixture
 traidr discover --fixture
 traidr token --fixture
 traidr briefing
+traidr watch list
 traidr dashboard
 traidr scheduler-once
 ```
@@ -152,6 +153,19 @@ python -m cli.main briefing --database storage/duckdb/traidr.duckdb
 ```
 
 Briefings summarize market scan evidence, radar candidates, alerts, simulation results, safety status, missing data warnings, and suggested watchlists. They never create execution actions. See `docs/daily_briefing.md`.
+
+## Watchlist
+
+Manage a local read-only watchlist in DuckDB:
+
+```bash
+python -m cli.main watch add solana/PAIR_ADDRESS --note "watch liquidity"
+python -m cli.main watch list
+python -m cli.main watch remove solana/PAIR_ADDRESS
+python -m cli.main watch scan
+```
+
+`watch scan` uses read-only market data boundaries and can create local alerts when risk worsens or opportunity improves. It never creates execution actions. See `docs/watchlist.md`.
 
 ## Test
 

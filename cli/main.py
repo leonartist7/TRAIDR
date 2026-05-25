@@ -43,6 +43,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("briefing", help="Generate a read-only daily intelligence briefing from DuckDB.")
 
+    watch_parser = subparsers.add_parser("watch", help="Manage the local read-only watchlist.")
+    watch_subparsers = watch_parser.add_subparsers(dest="watch_command", required=True)
+    watch_add_parser = watch_subparsers.add_parser("add", help="Add or reactivate a watched pair.")
+    watch_add_parser.add_argument("pair_ref")
+    watch_add_parser.add_argument("--note", default="")
+    watch_add_parser.add_argument("--tag", action="append", default=[])
+    watch_subparsers.add_parser("list", help="List active watched pairs.")
+    watch_remove_parser = watch_subparsers.add_parser("remove", help="Deactivate a watched pair.")
+    watch_remove_parser.add_argument("pair_ref")
+    watch_subparsers.add_parser("scan", help="Scan active watched pairs in read-only mode.")
+
     report_parser = subparsers.add_parser("report", help="Show research summaries.")
     report_parser.add_argument("--type", choices=("4h", "daily"), default="daily")
     report_parser.add_argument("--limit", type=int, default=5)
@@ -90,6 +101,22 @@ def main(argv: list[str] | None = None) -> int:
         )
     elif args.command == "briefing":
         result = commands.briefing(args.database)
+    elif args.command == "watch":
+        if args.watch_command == "add":
+            result = commands.watch_add(
+                args.pair_ref,
+                database=args.database,
+                note=args.note,
+                tags=tuple(args.tag),
+            )
+        elif args.watch_command == "list":
+            result = commands.watch_list(database=args.database)
+        elif args.watch_command == "remove":
+            result = commands.watch_remove(args.pair_ref, database=args.database)
+        elif args.watch_command == "scan":
+            result = commands.watch_scan(database=args.database)
+        else:  # pragma: no cover - argparse prevents this branch
+            raise AssertionError(f"unsupported watch command: {args.watch_command}")
     elif args.command == "report":
         result = commands.report(args.database, report_type=args.type, limit=args.limit)
     elif args.command == "alerts":
