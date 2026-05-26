@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -401,6 +402,15 @@ def ask(question: str, database: str | None = None, *, limit: int = 5) -> Comman
         0,
         answer_local_question(question, database_path=_database_path(database), limit=limit),
     )
+
+
+def daily_run(database: str | None = None, *, fixture_scan: bool = True) -> CommandResult:
+    module = _load_operator_daily_run()
+    report = module.run_daily_research(
+        database_path=_database_path(database),
+        fixture_scan=fixture_scan,
+    )
+    return CommandResult(0, module.format_daily_run_report(report))
 
 
 def watch_add(
@@ -973,3 +983,13 @@ def _existing_alert_fingerprints(store: DuckDBStore) -> tuple[str, ...]:
 class _EmptyPortfolioRepository:
     def list_entries(self, *, active_only: bool = True):
         return ()
+
+
+def _load_operator_daily_run():
+    path = ROOT / "operator" / "daily_run.py"
+    spec = importlib.util.spec_from_file_location("_traidr_operator_daily_run", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("failed to load TRAIDR daily run module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module

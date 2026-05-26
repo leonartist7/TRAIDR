@@ -37,6 +37,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `ask/intents.py` | Supported local question intents | no | complete |
 | `ask/query_parser.py` | Local no-LLM query parser | no | complete |
 | `ask/local_answerer.py` | DuckDB-backed local answer generator | no | complete |
+| `operator/daily_run.py` | Local daily research workflow command module | no | complete |
+| `operator/run_report.py` | Daily run report builder and formatter | no | complete |
 | `data_pipeline/__init__.py` | Data pipeline package marker | yes | complete |
 | `data_pipeline/contracts.py` | Snapshot and adapter contracts | yes | complete |
 | `data_pipeline/validation.py` | Freshness and shape validation | yes | complete |
@@ -210,6 +212,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/scoring_model.md` | Opportunity score v2 model notes | no | complete |
 | `docs/lifecycle.md` | Candidate lifecycle tracking notes | no | complete |
 | `docs/thesis.md` | Structured research thesis notes | no | complete |
+| `docs/daily_run.md` | Daily run workflow command notes | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
 | `dashboard/app.py` | Read-only Streamlit dashboard entry point | no | complete |
 | `dashboard/components.py` | Dashboard display components | no | complete |
@@ -233,6 +236,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_lifecycle_transitions.py` | Lifecycle transition detection tests | no | complete |
 | `tests/unit/test_thesis_generator.py` | Research thesis generation tests | no | complete |
 | `tests/unit/test_invalidation.py` | Thesis invalidation rule tests | no | complete |
+| `tests/unit/test_daily_run.py` | Daily run workflow command tests | no | complete |
 | `tests/unit/test_data_validation.py` | Normalized source validation tests | yes | complete |
 | `tests/unit/test_coingecko_adapter.py` | CoinGecko read-only adapter tests | no | complete |
 | `tests/unit/test_defillama_adapter.py` | DefiLlama read-only adapter tests | no | complete |

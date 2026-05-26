@@ -43,6 +43,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("briefing", help="Generate a read-only daily intelligence briefing from DuckDB.")
 
+    daily_run_parser = subparsers.add_parser("daily-run", help="Run the local read-only daily research workflow.")
+    daily_run_parser.add_argument(
+        "--fixture-scan",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use deterministic offline fixture scan data.",
+    )
+
     news_parser = subparsers.add_parser("news", help="Fetch or score read-only news intelligence.")
     news_parser.add_argument("--fixture", action="store_true")
     news_parser.add_argument("--source", choices=("rss",))
@@ -137,6 +145,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     elif args.command == "briefing":
         result = commands.briefing(args.database)
+    elif args.command == "daily-run":
+        result = commands.daily_run(args.database, fixture_scan=args.fixture_scan)
     elif args.command == "news":
         result = commands.news(fixture=args.fixture, source=args.source, url=args.url)
     elif args.command == "macro":

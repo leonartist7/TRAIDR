@@ -70,6 +70,7 @@ traidr scan --fixture
 traidr discover --fixture
 traidr token --fixture
 traidr briefing
+traidr daily-run
 traidr ask "what are my top risks?"
 traidr news --fixture
 traidr macro --fixture
@@ -220,6 +221,16 @@ python -m cli.main briefing --database storage/duckdb/traidr.duckdb
 ```
 
 Briefings summarize market scan evidence, radar candidates, alerts, simulation results, safety status, missing data warnings, and suggested watchlists. They never create execution actions. See `docs/daily_briefing.md`.
+
+## Daily Run
+
+Run the local research workflow in one command:
+
+```bash
+python -m cli.main daily-run --database storage/duckdb/traidr.duckdb
+```
+
+The daily run performs a status check, read-only fixture scan, watchlist update when available, radar update, local alert generation, daily briefing, and DuckDB report persistence. It never executes trades. See `docs/daily_run.md`.
 
 ## Watchlist
 
