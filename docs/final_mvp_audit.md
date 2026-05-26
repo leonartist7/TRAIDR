@@ -6,7 +6,7 @@ Updated: 2026-05-24 for Phase 17-20 personal market intelligence.
 
 ## Audit Method
 
-The audit used the repository checklist, import-direction scans, safety-keyword searches, the full pytest suite, and the deterministic simulation script. Graphify was probed but not used because `graphify` was not available on PATH and no `graphify-out/` graph exists in this workspace.
+The original MVP audit used the repository checklist, import-direction scans, safety-keyword searches, the full pytest suite, and the deterministic simulation script. Later stabilization passes configured Graphify as an optional dev-only analysis aid; Graphify output remains outside TRAIDR runtime behavior and is not required for normal operation.
 
 ## Readiness
 

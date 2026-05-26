@@ -232,6 +232,18 @@ python -m cli.main daily-run --database storage/duckdb/traidr.duckdb
 
 The daily run performs a status check, read-only fixture scan, watchlist update when available, radar update, local alert generation, daily briefing, and DuckDB report persistence. It never executes trades. See `docs/daily_run.md`.
 
+## Operator Notes
+
+For day-to-day use, run commands one at a time against the same DuckDB file. DuckDB is local and file-backed, so a dashboard session or another terminal can hold a file lock while it is reading the database.
+
+If a command reports a DuckDB file lock:
+
+1. Close any dashboard or other terminal using the same database.
+2. Rerun the command after the previous process exits.
+3. Use a separate `--database storage/duckdb/<name>.duckdb` path for experiments.
+
+The default daily workflow is fixture-first. Real-source commands are optional and read-only, and source failures return `INSUFFICIENT_DATA` instead of fabricated bullish data.
+
 ## Watchlist
 
 Manage a local read-only watchlist in DuckDB:
@@ -300,7 +312,7 @@ TRAIDR uses explicit boundaries:
 
 See `SPEC.md`, `SAFETY_RULES.md`, and `IMPLEMENTATION_PLAN.md` before implementing runtime modules.
 
-The MVP implementation is described further in `docs/architecture.md`, `docs/safety.md`, and `docs/decisions.md`.
+The MVP implementation is described further in `docs/architecture.md`, `docs/safety.md`, `docs/decisions.md`, `docs/OPERATOR_GUIDE.md`, and `docs/FINAL_PHASE_40_VERIFICATION.md`.
 
 ## Not Implemented
 
