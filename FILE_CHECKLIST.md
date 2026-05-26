@@ -190,6 +190,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/safety.md` | Expanded safety documentation | no | complete |
 | `docs/decisions.md` | Architecture decision notes | no | complete |
 | `docs/final_mvp_audit.md` | Final MVP safety and readiness audit | yes | complete |
+| `docs/FINAL_READINESS_AUDIT.md` | Final operator readiness audit | no | complete |
 | `docs/STABILIZATION_REPORT.md` | Stabilization verification and deferral report | yes | complete |
 | `docs/dashboard.md` | Read-only Streamlit dashboard usage | no | complete |
 | `docs/ask_traidr.md` | Ask TRAIDR local query usage | no | complete |
