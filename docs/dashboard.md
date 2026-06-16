@@ -1,6 +1,6 @@
 # Dashboard
 
-TRAIDR includes a local Streamlit command-center dashboard for read-only inspection of the DuckDB research database.
+TRAIDR includes a local Streamlit command-center dashboard for operating TRAIDR without typing the underlying CLI commands. The dashboard can run allowlisted local research actions and paper simulation actions through buttons, then shows DuckDB-backed results.
 
 ## Run
 
@@ -21,6 +21,7 @@ python -m cli.main dashboard
 
 ## Pages
 
+- Command Center buttons
 - Market Radar
 - Scan Evidence
 - Token Detail
@@ -32,10 +33,26 @@ python -m cli.main dashboard
 
 Risk tables are shown before opportunity tables where both are present.
 
+## Command Center Buttons
+
+The dashboard includes buttons for:
+
+- Run Daily Workflow
+- Run Fixture Scan
+- Run Paper Simulation
+- Show Briefing
+- Show Alerts
+- Generate Test Alerts
+- Run Scheduler Once
+- Refresh Fixture Radar
+- Check Status
+
+These buttons call TRAIDR's Python command functions directly. They do not spawn shell commands and they do not expose arbitrary command execution.
+
 ## Missing Database
 
-If the configured database is missing, the dashboard shows setup instructions. It does not create or mutate storage.
+If the configured database is missing, the dashboard shows setup instructions. Running a Command Center button such as Daily Workflow, Fixture Scan, or Paper Simulation can create the local DuckDB file with research or paper-simulation records.
 
 ## Safety Boundary
 
-The dashboard opens DuckDB in read-only mode and contains no trade, order, withdrawal, signing, private-key, or live-execution controls. Research rows include `can_execute_trades: false` where relevant.
+The dashboard has no live trade, exchange order, withdrawal, signing, private-key, or live-execution controls. Button actions are allowlisted local workflows only. Research rows include `can_execute_trades: false` where relevant, and paper simulation remains risk-gated simulation only.

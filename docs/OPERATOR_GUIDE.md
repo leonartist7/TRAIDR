@@ -72,14 +72,14 @@ The inspect command lists tables and recent audit/order/fill records. It does no
 
 ## Dashboard
 
-The dashboard is read-only:
+The dashboard is the easiest way to use TRAIDR without typing the underlying workflow commands:
 
 ```bash
 python -m cli.main dashboard
 python -m streamlit run dashboard/app.py -- --database storage/duckdb/traidr.duckdb
 ```
 
-If the database is missing, the dashboard shows setup instructions. It has no execution buttons.
+Use the Command Center buttons for Daily Workflow, Fixture Scan, Paper Simulation, Briefing, Alerts, Scheduler Once, Fixture Radar, and Status. The buttons are allowlisted local actions; they do not live trade, withdraw, access secrets, or execute arbitrary terminal commands.
 
 ## Alerts
 

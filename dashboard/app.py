@@ -12,6 +12,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from dashboard.components import (  # noqa: E402
+    render_command_center,
     render_database_summary,
     render_safety_status,
     render_setup_instructions,
@@ -33,6 +34,7 @@ def main() -> None:
     data = load_dashboard_data(database_input, limit=row_limit)
     render_safety_status(data)
     render_database_summary(data)
+    render_command_center(database_input)
 
     if not data.database_exists:
         render_setup_instructions(str(data.database_path))

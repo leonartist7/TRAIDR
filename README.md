@@ -90,12 +90,13 @@ traidr inspect --database storage/duckdb/traidr_test.duckdb
 
 ## Dashboard
 
-Run the read-only local dashboard after creating a local DuckDB file:
+Run the local dashboard:
 
 ```bash
-python scripts/run_simulation.py --database data/traidr.duckdb
 python -m streamlit run dashboard/app.py
 ```
+
+The dashboard now includes a Command Center with buttons for Daily Workflow, Fixture Scan, Paper Simulation, Briefing, Alerts, Scheduler Once, Fixture Radar, and Status. These buttons run allowlisted local Python actions. They do not live trade, withdraw, access secrets, or execute arbitrary terminal commands.
 
 See `docs/dashboard.md` for details.
 

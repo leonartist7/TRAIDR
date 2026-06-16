@@ -7,6 +7,7 @@ from typing import Any
 
 import streamlit as st
 
+from dashboard.actions import run_dashboard_action
 from dashboard.queries import DashboardData
 
 
@@ -46,6 +47,37 @@ def render_database_summary(data: DashboardData) -> None:
     st.subheader("Local Database")
     st.write(f"Path: `{data.database_path}`")
     st.write(f"Tables: {', '.join(sorted(data.tables)) if data.tables else 'none'}")
+
+
+def render_command_center(database_path: str) -> None:
+    """Render safe local action buttons for daily operator workflows."""
+
+    st.subheader("Command Center")
+    st.caption("Buttons run local TRAIDR research workflows. They cannot live trade, withdraw, or access secrets.")
+
+    actions = (
+        ("Run Daily Workflow", "daily_run", "Scan fixtures, update radar, generate alerts, and save a report."),
+        ("Run Fixture Scan", "fixture_scan", "Create offline scan evidence and radar candidates."),
+        ("Run Paper Simulation", "paper_simulation", "Record a risk-gated paper-only simulation."),
+        ("Show Briefing", "briefing", "Generate a local daily briefing from DuckDB."),
+        ("Show Alerts", "alerts", "Read local alert history."),
+        ("Generate Test Alerts", "alerts_test", "Create deterministic local alert examples."),
+        ("Run Scheduler Once", "scheduler_once", "Run due research scheduler tasks one time."),
+        ("Refresh Fixture Radar", "fixture_radar", "Display fixture radar output."),
+        ("Check Status", "status", "Show safety and database status."),
+    )
+
+    columns = st.columns(3)
+    for index, (label, action, help_text) in enumerate(actions):
+        if columns[index % 3].button(label, key=f"dashboard_action_{action}", help=help_text, use_container_width=True):
+            with st.spinner(f"Running {label}..."):
+                result = run_dashboard_action(action, database=database_path)
+            if result.exit_code == 0:
+                st.success(f"{result.label} completed. can_execute_trades: {result.can_execute_trades}")
+            else:
+                st.error(f"{result.label} failed safely. can_execute_trades: {result.can_execute_trades}")
+            st.code(result.output, language="text")
+            st.info("Use the app refresh control or rerun the page to reload the tables below.")
 
 
 def render_risk_first_tables(
