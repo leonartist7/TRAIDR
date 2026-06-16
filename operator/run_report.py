@@ -23,8 +23,8 @@ def build_run_report(
         "status": status,
         "scanned": scanned,
         "watchlist": watchlist,
-        "top_opportunities": top_opportunities,
-        "top_risks": top_risks,
+        "top_opportunities": _dedupe_candidate_rows(top_opportunities),
+        "top_risks": _dedupe_candidate_rows(top_risks),
         "alerts_generated": alerts_generated,
         "missing_data": missing_data,
         "next_suggested_commands": next_commands,
@@ -67,6 +67,7 @@ def _dict_lines(values: dict[str, Any]) -> list[str]:
 
 
 def _row_lines(rows: list[dict[str, Any]], empty: str) -> list[str]:
+    rows = _dedupe_candidate_rows(rows)
     if not rows:
         return [empty]
     lines = []
@@ -77,6 +78,44 @@ def _row_lines(rows: list[dict[str, Any]], empty: str) -> list[str]:
         risk = row.get("risk_score", "unknown")
         lines.append(f"- {subject}: state={state}; opportunity={opportunity}; risk={risk}; can_execute_trades=false")
     return lines
+
+
+def _dedupe_candidate_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    deduped: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for row in rows:
+        key = str(row.get("subject_id") or row.get("pair_id") or row.get("token_pair_id") or "").strip()
+        if not key:
+            key = f"unknown:{len(order)}"
+        if key not in deduped:
+            deduped[key] = row
+            order.append(key)
+            continue
+        if _candidate_preferred(row, deduped[key]):
+            deduped[key] = row
+    return [deduped[key] for key in order]
+
+
+def _candidate_preferred(candidate: dict[str, Any], existing: dict[str, Any]) -> bool:
+    candidate_confidence = _float_or_none(candidate.get("confidence"))
+    existing_confidence = _float_or_none(existing.get("confidence"))
+    if candidate_confidence is not None and existing_confidence is not None:
+        if candidate_confidence != existing_confidence:
+            return candidate_confidence > existing_confidence
+    elif candidate_confidence is not None:
+        return True
+    elif existing_confidence is not None:
+        return False
+    candidate_recorded = str(candidate.get("recorded_at") or "")
+    existing_recorded = str(existing.get("recorded_at") or "")
+    return bool(candidate_recorded and candidate_recorded > existing_recorded)
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _list_lines(values: list[str], empty: str) -> list[str]:

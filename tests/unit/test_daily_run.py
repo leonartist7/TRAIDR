@@ -39,6 +39,22 @@ def test_daily_run_can_disable_fixture_scan_without_execution(tmp_path: Path) ->
     assert "No Execution Actions" in result.output
 
 
+def test_daily_run_deduplicates_rendered_candidates(tmp_path: Path) -> None:
+    database = tmp_path / "daily-run-dedup.duckdb"
+
+    first = daily_run(str(database))
+    second = daily_run(str(database))
+
+    assert first.exit_code == 0
+    assert second.exit_code == 0
+    opportunities = _section(second.output, "Top Opportunities")
+    risks = _section(second.output, "Top Risks")
+    assert opportunities.count("fixture-sol-usdc") == 1
+    assert opportunities.count("fixture-bonk-usdc") == 1
+    assert risks.count("fixture-sol-usdc") == 1
+    assert risks.count("fixture-bonk-usdc") == 1
+
+
 def test_main_dispatches_daily_run(tmp_path: Path, capsys) -> None:
     database = tmp_path / "daily-run-main.duckdb"
 
@@ -48,3 +64,9 @@ def test_main_dispatches_daily_run(tmp_path: Path, capsys) -> None:
     assert exit_code == 0
     assert "TRAIDR Daily Run" in output
     assert database.exists()
+
+
+def _section(output: str, title: str) -> str:
+    start = output.index(title)
+    end = output.find("\n\n", start)
+    return output[start:] if end == -1 else output[start:end]

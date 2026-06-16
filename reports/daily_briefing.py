@@ -127,8 +127,25 @@ def _top_radar_candidates(
         return ()
     rows = connection.execute(
         """
-        SELECT subject_id, state, rank, opportunity_score, risk_score, confidence, reason_codes_json
-        FROM opportunity_radar_states
+        WITH deduped AS (
+            SELECT
+                subject_id,
+                state,
+                rank,
+                opportunity_score,
+                risk_score,
+                confidence,
+                reason_codes_json,
+                recorded_at,
+                ROW_NUMBER() OVER (
+                    PARTITION BY subject_id
+                    ORDER BY confidence DESC, recorded_at DESC
+                ) AS duplicate_rank
+            FROM opportunity_radar_states
+        )
+        SELECT subject_id, state, rank, opportunity_score, risk_score, confidence, reason_codes_json, recorded_at
+        FROM deduped
+        WHERE duplicate_rank = 1
         ORDER BY rank ASC, opportunity_score DESC, recorded_at DESC
         LIMIT ?
         """,
@@ -146,8 +163,25 @@ def _highest_risk_candidates(
         return ()
     rows = connection.execute(
         """
-        SELECT subject_id, state, rank, opportunity_score, risk_score, confidence, reason_codes_json
-        FROM opportunity_radar_states
+        WITH deduped AS (
+            SELECT
+                subject_id,
+                state,
+                rank,
+                opportunity_score,
+                risk_score,
+                confidence,
+                reason_codes_json,
+                recorded_at,
+                ROW_NUMBER() OVER (
+                    PARTITION BY subject_id
+                    ORDER BY confidence DESC, recorded_at DESC
+                ) AS duplicate_rank
+            FROM opportunity_radar_states
+        )
+        SELECT subject_id, state, rank, opportunity_score, risk_score, confidence, reason_codes_json, recorded_at
+        FROM deduped
+        WHERE duplicate_rank = 1
         ORDER BY risk_score DESC, recorded_at DESC
         LIMIT ?
         """,
@@ -343,6 +377,7 @@ def _radar_row(row: tuple[Any, ...]) -> dict[str, Any]:
         "risk_score": float(row[4]),
         "confidence": float(row[5]),
         "reason_codes": _json_list(row[6]),
+        "recorded_at": row[7].isoformat() if len(row) > 7 and row[7] else None,
         "can_execute_trades": False,
     }
 
