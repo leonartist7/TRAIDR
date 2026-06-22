@@ -22,6 +22,7 @@ python -m cli.main dashboard
 ## Pages
 
 - Command Center buttons
+- Bitunix Futures cockpit
 - Market Radar
 - Scan Evidence
 - Token Detail
@@ -48,6 +49,10 @@ The dashboard includes buttons for:
 - Check Status
 
 These buttons call TRAIDR's Python command functions directly. They do not spawn shell commands and they do not expose arbitrary command execution.
+
+## Bitunix Futures
+
+The `Bitunix Futures` tab loads public Bitunix futures market data on button press and renders a native Lightweight Charts canvas with TRAIDR overlays. It does not iframe Bitunix and it does not provide order-entry controls. See `docs/bitunix_cockpit.md`.
 
 ## Missing Database
 

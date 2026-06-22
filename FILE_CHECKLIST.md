@@ -47,6 +47,8 @@ Status values are `not_started`, `partial`, or `complete`.
 | `data_pipeline/dexscreener_adapter.py` | Optional DexScreener market adapter | no | complete |
 | `data_pipeline/coingecko_adapter.py` | Optional read-only CoinGecko market adapter | no | complete |
 | `data_pipeline/defillama_adapter.py` | Optional read-only DefiLlama market adapter | no | complete |
+| `data_pipeline/bitunix_models.py` | Strict read-only Bitunix futures data models | no | complete |
+| `data_pipeline/bitunix_futures_adapter.py` | Optional read-only Bitunix futures REST adapter | no | complete |
 | `data_pipeline/live_market_loader.py` | Optional read-only market source loader | no | complete |
 | `data_pipeline/market_scan.py` | Read-only market scan orchestration | no | complete |
 | `data_pipeline/scan_models.py` | Market scan result models | no | complete |
@@ -216,9 +218,12 @@ Status values are `not_started`, `partial`, or `complete`.
 | `docs/lifecycle.md` | Candidate lifecycle tracking notes | no | complete |
 | `docs/thesis.md` | Structured research thesis notes | no | complete |
 | `docs/daily_run.md` | Daily run workflow command notes | no | complete |
+| `docs/bitunix_cockpit.md` | Read-only Bitunix futures cockpit usage | no | complete |
 | `GRAPH_REPORT.md` | Optional configured Graphify audit report | no | not_started |
 | `dashboard/app.py` | Read-only Streamlit dashboard entry point | no | complete |
-| `dashboard/components.py` | Dashboard display components | no | complete |
+| `dashboard/components/__init__.py` | Dashboard display components | no | complete |
+| `dashboard/components/chart_engine.js` | Native Lightweight Charts renderer for Bitunix cockpit | no | complete |
+| `dashboard/bitunix_cockpit.py` | Read-only Bitunix futures cockpit dashboard page | no | complete |
 | `dashboard/queries.py` | Read-only DuckDB dashboard queries | no | complete |
 | `dashboard/pages/market_radar.py` | Market radar and scan evidence dashboard page | no | complete |
 | `dashboard/pages/watchlist.py` | Watchlist dashboard page | no | complete |
@@ -230,6 +235,9 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
 | `tests/unit/test_cli_commands.py` | Operator CLI command tests | no | complete |
 | `tests/unit/test_dashboard_queries.py` | Read-only dashboard query tests | no | complete |
+| `tests/unit/test_bitunix_models.py` | Bitunix strict parsing and non-execution model tests | no | complete |
+| `tests/unit/test_bitunix_futures_adapter.py` | Mocked Bitunix public REST adapter tests | no | complete |
+| `tests/unit/test_bitunix_cockpit.py` | Bitunix cockpit payload and chart asset tests | no | complete |
 | `tests/unit/test_query_parser.py` | Ask TRAIDR query parser tests | no | complete |
 | `tests/unit/test_local_answerer.py` | Ask TRAIDR local answer tests | no | complete |
 | `tests/unit/test_opportunity_score.py` | Opportunity score v2 tests | no | complete |

@@ -17,6 +17,7 @@ from dashboard.components import (  # noqa: E402
     render_safety_status,
     render_setup_instructions,
 )
+from dashboard import bitunix_cockpit  # noqa: E402
 from dashboard.pages import alerts, market_radar, portfolio, reports, token_detail, watchlist  # noqa: E402
 from dashboard.queries import configured_database_path, load_dashboard_data  # noqa: E402
 
@@ -38,10 +39,10 @@ def main() -> None:
 
     if not data.database_exists:
         render_setup_instructions(str(data.database_path))
-        return
 
     tabs = st.tabs(
         [
+            "Bitunix Futures",
             "Market Radar",
             "Token Detail",
             "Watchlist",
@@ -52,18 +53,20 @@ def main() -> None:
         ]
     )
     with tabs[0]:
-        market_radar.render(data)
+        bitunix_cockpit.render(database_input)
     with tabs[1]:
-        token_detail.render(data)
+        market_radar.render(data)
     with tabs[2]:
-        watchlist.render(data)
+        token_detail.render(data)
     with tabs[3]:
-        portfolio.render(data)
+        watchlist.render(data)
     with tabs[4]:
-        alerts.render(data)
+        portfolio.render(data)
     with tabs[5]:
-        reports.render(data)
+        alerts.render(data)
     with tabs[6]:
+        reports.render(data)
+    with tabs[7]:
         render_safety_status(data)
 
 

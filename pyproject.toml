@@ -12,6 +12,8 @@ license = { text = "Proprietary" }
 authors = [{ name = "TRAIDR contributors" }]
 dependencies = [
     "duckdb>=1.1,<2.0",
+    "httpx>=0.27,<1.0",
+    "pydantic>=2.7,<3.0",
     "PyYAML>=6.0,<7.0",
     "networkx>=3.3,<4.0",
     "streamlit>=1.35,<2.0",
@@ -39,6 +41,7 @@ packages = [
     "config",
     "data_pipeline",
     "dashboard",
+    "dashboard.components",
     "dashboard.pages",
     "execution",
     "intelligence",
@@ -60,3 +63,6 @@ packages = [
     "utils",
     "watchlist",
 ]
+
+[tool.setuptools.package-data]
+"dashboard.components" = ["*.js"]

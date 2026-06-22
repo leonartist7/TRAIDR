@@ -100,6 +100,8 @@ The dashboard now includes a Command Center with buttons for Daily Workflow, Fix
 
 See `docs/dashboard.md` for details.
 
+The `Bitunix Futures` tab is a native read-only futures cockpit. It uses public Bitunix futures market data for tickers, klines, funding, and depth, then renders TRAIDR's own chart and overlays. It does not iframe Bitunix and it has no order buttons. See `docs/bitunix_cockpit.md`.
+
 ## Ask TRAIDR
 
 Ask local questions against DuckDB summaries without an external LLM:
