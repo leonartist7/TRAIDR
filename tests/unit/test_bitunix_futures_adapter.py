@@ -57,6 +57,50 @@ def test_bitunix_adapter_malformed_or_missing_data_fails_closed() -> None:
     assert result.value is None
 
 
+def test_bitunix_adapter_drops_individual_malformed_candles() -> None:
+    def transport(path: str, params: Mapping[str, str]) -> Mapping[str, Any]:
+        return {
+            "code": 0,
+            "data": [
+                {
+                    "time": str(int(NOW.timestamp() * 1000) - 7_200_000),
+                    "open": "65.769",
+                    "high": "66.853",
+                    "low": "65.771",
+                    "close": "66.813",
+                    "quoteVol": "75852.81",
+                    "baseVol": "5035332.09824",
+                },
+                {
+                    "time": str(int(NOW.timestamp() * 1000) - 3_600_000),
+                    "open": "67",
+                    "high": "68",
+                    "low": "66",
+                    "close": "67.5",
+                    "quoteVol": "1000",
+                    "baseVol": "10",
+                },
+                {
+                    "time": str(int(NOW.timestamp() * 1000)),
+                    "open": "67.5",
+                    "high": "69",
+                    "low": "67",
+                    "close": "68.5",
+                    "quoteVol": "1200",
+                    "baseVol": "12",
+                },
+            ],
+        }
+
+    adapter = BitunixFuturesAdapter(transport, now=NOW)
+
+    result = asyncio.run(adapter.fetch_kline("HYPEUSDT", "1h"))
+
+    assert result.ok
+    assert len(result.value) == 2
+    assert "BITUNIX_KLINE_DROPPED_MALFORMED_CANDLES" in result.reason_codes
+
+
 def test_bitunix_adapter_stale_candles_fail_closed() -> None:
     stale_now = NOW + timedelta(days=2)
     adapter = BitunixFuturesAdapter(_fixture_transport(NOW), now=stale_now)

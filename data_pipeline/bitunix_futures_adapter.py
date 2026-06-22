@@ -96,24 +96,15 @@ class BitunixFuturesAdapter:
             data = _required_data(raw)
             if not isinstance(data, list) or not data:
                 return BitunixAdapterResult.insufficient("BITUNIX_KLINE_MISSING")
-            candles = tuple(
-                sorted(
-                    (
-                        BitunixCandle.model_validate(
-                            {
-                                **_require_mapping(item),
-                                "symbol": normalized_symbol,
-                                "interval": normalized_interval,
-                            }
-                        )
-                        for item in data
-                    ),
-                    key=lambda candle: candle.time_ms,
-                )
-            )
+            candles, malformed_count = _parse_valid_candles(data, normalized_symbol, normalized_interval)
+            if len(candles) < 2:
+                return BitunixAdapterResult.insufficient("BITUNIX_KLINE_INSUFFICIENT_VALID_CANDLES")
             if _candles_stale(candles, normalized_interval, self._now()):
                 return BitunixAdapterResult.insufficient("BITUNIX_KLINE_STALE")
-            return BitunixAdapterResult.success(list(candles), "BITUNIX_KLINE_OK", "NO_EXECUTION_ACTION")
+            reason_codes = ["BITUNIX_KLINE_OK", "NO_EXECUTION_ACTION"]
+            if malformed_count:
+                reason_codes.append("BITUNIX_KLINE_DROPPED_MALFORMED_CANDLES")
+            return BitunixAdapterResult.success(list(candles), *tuple(reason_codes))
         except Exception as error:
             return _insufficient_from_error(error, "BITUNIX_KLINE_FAILED")
 
@@ -190,6 +181,17 @@ class BitunixFuturesAdapter:
         depth_delta = depth.depth_delta()
         opportunity_rating = _opportunity_rating(candles, tickers[0], funding, depth_delta.depth_delta_percent)
         risk_rating = _risk_rating(candles, funding, depth_delta.depth_delta_percent, depth_delta.bid_sum + depth_delta.ask_sum)
+        reason_codes = tuple(
+            dict.fromkeys(
+                (
+                    "BITUNIX_PUBLIC_REST",
+                    "BITUNIX_COCKPIT_OK",
+                    "RESEARCH_ONLY",
+                    "NO_EXECUTION_ACTION",
+                    *tuple(kline_result.reason_codes),
+                )
+            )
+        )
         snapshot = BitunixCockpitSnapshot(
             symbol=normalized_symbol,
             interval=normalized_interval,
@@ -200,12 +202,7 @@ class BitunixFuturesAdapter:
             depth_delta=depth_delta,
             opportunity_rating=opportunity_rating,
             risk_rating=risk_rating,
-            reason_codes=(
-                "BITUNIX_PUBLIC_REST",
-                "BITUNIX_COCKPIT_OK",
-                "RESEARCH_ONLY",
-                "NO_EXECUTION_ACTION",
-            ),
+            reason_codes=reason_codes,
             observed_at=self._now(),
         )
         return BitunixAdapterResult.success(snapshot, "BITUNIX_COCKPIT_OK", "NO_EXECUTION_ACTION")
@@ -257,6 +254,29 @@ def _require_mapping(value: Any) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ValueError("expected mapping")
     return value
+
+
+def _parse_valid_candles(
+    rows: list[Any],
+    symbol: str,
+    interval: str,
+) -> tuple[tuple[BitunixCandle, ...], int]:
+    candles: list[BitunixCandle] = []
+    malformed_count = 0
+    for item in rows:
+        try:
+            candles.append(
+                BitunixCandle.model_validate(
+                    {
+                        **_require_mapping(item),
+                        "symbol": symbol,
+                        "interval": interval,
+                    }
+                )
+            )
+        except (ValidationError, ValueError, TypeError):
+            malformed_count += 1
+    return tuple(sorted(candles, key=lambda candle: candle.time_ms)), malformed_count
 
 
 def _candles_stale(candles: tuple[BitunixCandle, ...], interval: str, now: datetime) -> bool:
