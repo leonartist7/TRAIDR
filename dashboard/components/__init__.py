@@ -69,7 +69,7 @@ def render_command_center(database_path: str) -> None:
 
     columns = st.columns(3)
     for index, (label, action, help_text) in enumerate(actions):
-        if columns[index % 3].button(label, key=f"dashboard_action_{action}", help=help_text, use_container_width=True):
+        if columns[index % 3].button(label, key=f"dashboard_action_{action}", help=help_text, width="stretch"):
             with st.spinner(f"Running {label}..."):
                 result = run_dashboard_action(action, database=database_path)
             if result.exit_code == 0:
@@ -99,8 +99,22 @@ def render_table(title: str, rows: Sequence[Mapping[str, Any]]) -> None:
     if not rows:
         st.caption("No rows found.")
         return
-    st.dataframe([dict(row) for row in rows], use_container_width=True, hide_index=True)
+    st.dataframe([_display_row(row) for row in rows], width="stretch", hide_index=True)
 
 
 def _yes_no(value: Any) -> str:
     return "yes" if value is True else "no"
+
+
+def _display_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    display: dict[str, Any] = {}
+    for key, value in row.items():
+        if isinstance(value, (dict, list, tuple, set)):
+            display[key] = str(value)
+        elif isinstance(value, bool):
+            display[key] = "false" if value is False else "true"
+        elif value is None:
+            display[key] = ""
+        else:
+            display[key] = value
+    return display

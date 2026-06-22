@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 import dashboard.app
-from dashboard.bitunix_cockpit import CHART_ENGINE_PATH, build_chart_payload, insufficient_chart_payload
+from dashboard.bitunix_cockpit import CHART_ENGINE_PATH, build_chart_payload, build_preview_snapshot, insufficient_chart_payload
 from data_pipeline.bitunix_models import (
     BitunixCandle,
     BitunixCockpitSnapshot,
@@ -32,6 +32,17 @@ def test_bitunix_insufficient_chart_payload_fails_closed() -> None:
     assert payload["can_execute_trades"] is False
     assert payload["candles"] == []
     assert "BITUNIX_HTTP_FAILED" in payload["reason_codes"]
+
+
+def test_bitunix_preview_snapshot_renders_chart_before_live_fetch() -> None:
+    snapshot = build_preview_snapshot("HYPEUSDT", "1h")
+    payload = build_chart_payload(snapshot, data_mode="preview")
+
+    assert snapshot.can_execute_trades is False
+    assert payload["can_execute_trades"] is False
+    assert payload["data_mode"] == "preview"
+    assert payload["candles"]
+    assert "REFRESH_FOR_LIVE_BITUNIX" in payload["reason_codes"]
 
 
 def test_bitunix_chart_engine_asset_exists_and_has_no_order_controls() -> None:

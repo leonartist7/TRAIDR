@@ -23,9 +23,9 @@ from dashboard.queries import configured_database_path, load_dashboard_data  # n
 
 
 def main() -> None:
-    st.set_page_config(page_title="TRAIDR Dashboard", layout="wide")
-    st.title("TRAIDR Local Dashboard")
-    st.caption("Read-only simulation research view. No trading or order execution controls exist here.")
+    st.set_page_config(page_title="TRAIDR Futures Cockpit", layout="wide")
+    st.title("TRAIDR Futures Cockpit")
+    st.caption("Native chart + intelligence view. Research only: no live trading, no order execution, no private keys.")
 
     default_database = configured_database_path()
     database_input = st.sidebar.text_input("DuckDB path", value=str(default_database))
@@ -33,16 +33,11 @@ def main() -> None:
     st.sidebar.warning("Read-only dashboard. No live trading. No withdrawals. No secret input.")
 
     data = load_dashboard_data(database_input, limit=row_limit)
-    render_safety_status(data)
-    render_database_summary(data)
-    render_command_center(database_input)
-
-    if not data.database_exists:
-        render_setup_instructions(str(data.database_path))
 
     tabs = st.tabs(
         [
             "Bitunix Futures",
+            "Operations",
             "Market Radar",
             "Token Detail",
             "Watchlist",
@@ -55,18 +50,24 @@ def main() -> None:
     with tabs[0]:
         bitunix_cockpit.render(database_input)
     with tabs[1]:
-        market_radar.render(data)
+        render_safety_status(data)
+        render_database_summary(data)
+        render_command_center(database_input)
+        if not data.database_exists:
+            render_setup_instructions(str(data.database_path))
     with tabs[2]:
-        token_detail.render(data)
+        market_radar.render(data)
     with tabs[3]:
-        watchlist.render(data)
+        token_detail.render(data)
     with tabs[4]:
-        portfolio.render(data)
+        watchlist.render(data)
     with tabs[5]:
-        alerts.render(data)
+        portfolio.render(data)
     with tabs[6]:
-        reports.render(data)
+        alerts.render(data)
     with tabs[7]:
+        reports.render(data)
+    with tabs[8]:
         render_safety_status(data)
 
 
