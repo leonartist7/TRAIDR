@@ -96,11 +96,13 @@ Run the local dashboard:
 python -m streamlit run dashboard/app.py
 ```
 
-The dashboard now includes a Command Center with buttons for Daily Workflow, Fixture Scan, Paper Simulation, Briefing, Alerts, Scheduler Once, Fixture Radar, and Status. These buttons run allowlisted local Python actions. They do not live trade, withdraw, access secrets, or execute arbitrary terminal commands.
+The dashboard opens as a visual Command Center. The first screen is the `Cockpit`: a native Bitunix public-data chart, an intelligence stack, a daily mission checklist, and safe local workflow buttons. The `Operations` tab contains the fuller command launcher for Daily Workflow, Fixture Scan, Paper Simulation, Generate Alerts, Scheduler Once, and Status/Inspect DB.
+
+Dashboard buttons run allowlisted local Python actions. They do not live trade, withdraw, access secrets, or execute arbitrary terminal commands.
 
 See `docs/dashboard.md` for details.
 
-The `Bitunix Futures` tab is a native read-only futures cockpit. It uses public Bitunix futures market data for tickers, klines, funding, and depth, then renders TRAIDR's own chart and overlays. It does not iframe Bitunix and it has no order buttons. See `docs/bitunix_cockpit.md`.
+The `Cockpit` uses public Bitunix futures market data for tickers, klines, funding, and depth, then renders TRAIDR's own chart, overlays, and research-only opportunity/risk panels. It does not iframe Bitunix and it has no order buttons. See `docs/bitunix_cockpit.md`.
 
 ## Ask TRAIDR
 

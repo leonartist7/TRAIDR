@@ -35,8 +35,15 @@ CHART_ENGINE_PATH = Path(__file__).resolve().parent / "components" / "chart_engi
 def render(database_path: str | Path) -> None:
     """Render the research-only Bitunix futures cockpit."""
 
-    st.header("Bitunix Futures")
-    st.caption("Coin chart first. Public Bitunix futures data only. No orders, no private keys, no exchange execution.")
+    st.markdown(
+        """
+        <div class="traidr-panel">
+          <h3>Bitunix Futures</h3>
+          <p>Native public-data chart. No iframe, no order controls, no API keys, no exchange execution.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     control_columns = st.columns([1, 1, 1, 1])
     symbol = control_columns[0].selectbox("Pair", BITUNIX_ALLOWED_SYMBOLS, index=0)
@@ -61,19 +68,21 @@ def render(database_path: str | Path) -> None:
     if result is None:
         snapshot = build_preview_snapshot(symbol, interval)
         st.info("Preview chart shown. Press Refresh Real Bitunix Data to replace it with public Bitunix data.")
-        _render_readouts(snapshot, label="Preview data")
-        render_chart(build_chart_payload(snapshot, data_mode="preview"))
+        _render_cockpit(snapshot, data_mode="preview", status_label="Preview data")
         return
     if not isinstance(result, BitunixAdapterResult) or not result.ok or not isinstance(result.value, BitunixCockpitSnapshot):
         reason_codes = list(getattr(result, "reason_codes", ("BITUNIX_INSUFFICIENT_DATA",)))
         _render_insufficient(reason_codes)
         st.info("Real data is unavailable right now, so TRAIDR is showing a clearly marked preview chart instead of fake live data.")
-        render_chart(build_chart_payload(build_preview_snapshot(symbol, interval), data_mode="preview"))
+        _render_cockpit(
+            build_preview_snapshot(symbol, interval),
+            data_mode="preview",
+            status_label="Fail-closed preview",
+        )
         return
 
     snapshot = result.value
-    _render_readouts(snapshot, label="Live public Bitunix data")
-    render_chart(build_chart_payload(snapshot, data_mode="live_public_bitunix"))
+    _render_cockpit(snapshot, data_mode="live_public_bitunix", status_label="Live public Bitunix data")
 
 
 def build_chart_payload(snapshot: BitunixCockpitSnapshot, *, data_mode: str = "live_public_bitunix") -> dict[str, Any]:
@@ -234,6 +243,17 @@ def render_chart(payload: dict[str, Any]) -> None:
     components.html(html, height=660, scrolling=False)
 
 
+def _render_cockpit(snapshot: BitunixCockpitSnapshot, *, data_mode: str, status_label: str) -> None:
+    """Render the chart beside the intelligence stack."""
+
+    _render_readouts(snapshot, label=status_label)
+    chart_column, stack_column = st.columns([3.2, 1], gap="medium")
+    with chart_column:
+        render_chart(build_chart_payload(snapshot, data_mode=data_mode))
+    with stack_column:
+        _render_intelligence_stack(snapshot, data_mode=data_mode)
+
+
 def _render_readouts(snapshot: BitunixCockpitSnapshot, *, label: str) -> None:
     st.subheader(f"{snapshot.symbol} · {snapshot.interval} · {label}")
     metrics = st.columns(5)
@@ -250,10 +270,123 @@ def _render_readouts(snapshot: BitunixCockpitSnapshot, *, label: str) -> None:
     st.write("Reason codes:", ", ".join(snapshot.reason_codes))
 
 
+def _render_intelligence_stack(snapshot: BitunixCockpitSnapshot, *, data_mode: str) -> None:
+    """Render product-facing market intelligence cards next to the chart."""
+
+    depth_delta = float(snapshot.depth_delta.depth_delta_percent)
+    funding = float(snapshot.funding_rate.funding_rate)
+    opportunity = snapshot.opportunity_rating
+    risk = snapshot.risk_rating
+    market_state = _market_state(snapshot)
+    next_action = _next_safe_action(snapshot, data_mode=data_mode)
+    why_interesting = _why_interesting(snapshot)
+    why_risky = _why_risky(snapshot, data_mode=data_mode)
+    st.markdown(
+        f"""
+        <div class="traidr-panel">
+          <h3>Intelligence Stack</h3>
+          <p>Public market data only. can_execute_trades: false</p>
+        </div>
+        <div class="traidr-panel">
+          <h3>Market State</h3>
+          <p><strong>{market_state}</strong></p>
+          <p>Mode: {data_mode}</p>
+        </div>
+        <div class="traidr-panel">
+          <h3>Opportunity</h3>
+          <p><strong>{opportunity}/100</strong></p>
+          <p>{why_interesting}</p>
+        </div>
+        <div class="traidr-panel">
+          <h3>Risk</h3>
+          <p><strong>{risk}/100</strong></p>
+          <p>{why_risky}</p>
+        </div>
+        <div class="traidr-panel">
+          <h3>Liquidity / Depth</h3>
+          <p><strong>{depth_delta:.2f}% bid share</strong></p>
+          <p>{_depth_label(depth_delta)}</p>
+        </div>
+        <div class="traidr-panel">
+          <h3>Funding State</h3>
+          <p><strong>{funding:.5f}</strong></p>
+          <p>{_funding_label(funding)}</p>
+        </div>
+        <div class="traidr-panel">
+          <h3>Next Safe Action</h3>
+          <p><strong>{next_action}</strong></p>
+          <p>No order route exists in this cockpit.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _render_insufficient(reason_codes: list[str]) -> None:
     st.subheader("INSUFFICIENT_DATA")
     st.write("Reason codes:", ", ".join(reason_codes))
     st.write("can_execute_trades: false")
+
+
+def _market_state(snapshot: BitunixCockpitSnapshot) -> str:
+    start = float(snapshot.candles[0].close)
+    end = float(snapshot.candles[-1].close)
+    change = ((end - start) / start) * 100 if start else 0
+    if change > 1.5 and snapshot.risk_rating < 55:
+        return "SETUP IMPROVING"
+    if change < -1.5 or snapshot.risk_rating >= 70:
+        return "RISK RISING"
+    return "NEUTRAL"
+
+
+def _next_safe_action(snapshot: BitunixCockpitSnapshot, *, data_mode: str) -> str:
+    if data_mode != "live_public_bitunix":
+        return "Refresh public data"
+    if snapshot.risk_rating >= 65:
+        return "Review risk first"
+    if snapshot.opportunity_rating >= 70:
+        return "Monitor and confirm"
+    return "Watch"
+
+
+def _why_interesting(snapshot: BitunixCockpitSnapshot) -> str:
+    reasons = []
+    if snapshot.opportunity_rating >= 65:
+        reasons.append("setup score is elevated")
+    if float(snapshot.depth_delta.depth_delta_percent) > 55:
+        reasons.append("bid-side depth is stronger")
+    if float(snapshot.ticker.quote_volume) > 0:
+        reasons.append("24h volume is available")
+    return "; ".join(reasons) + "." if reasons else "No strong opportunity signal yet."
+
+
+def _why_risky(snapshot: BitunixCockpitSnapshot, *, data_mode: str) -> str:
+    reasons = []
+    if data_mode != "live_public_bitunix":
+        reasons.append("preview data is not actionable")
+    if snapshot.risk_rating >= 50:
+        reasons.append("risk score requires review")
+    if abs(float(snapshot.funding_rate.funding_rate)) > 0.003:
+        reasons.append("funding is elevated")
+    if not reasons:
+        reasons.append("research brackets are not trade instructions")
+    return "; ".join(reasons) + "."
+
+
+def _depth_label(depth_delta: float) -> str:
+    if depth_delta >= 60:
+        return "Bid dominant, but still research-only."
+    if depth_delta <= 40:
+        return "Ask pressure is elevated."
+    return "Balanced book."
+
+
+def _funding_label(funding: float) -> str:
+    if abs(funding) < 0.001:
+        return "Neutral funding."
+    if funding > 0:
+        return "Longs paying funding."
+    return "Shorts paying funding."
 
 
 def _support_resistance(candles: tuple[BitunixCandle, ...]) -> list[dict[str, Any]]:

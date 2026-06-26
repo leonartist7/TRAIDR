@@ -225,6 +225,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `dashboard/components/chart_engine.js` | Native Lightweight Charts renderer for Bitunix cockpit | no | complete |
 | `dashboard/bitunix_cockpit.py` | Read-only Bitunix futures cockpit dashboard page | no | complete |
 | `dashboard/queries.py` | Read-only DuckDB dashboard queries | no | complete |
+| `dashboard/view_models.py` | Command-center presentation view models | no | complete |
 | `dashboard/pages/market_radar.py` | Market radar and scan evidence dashboard page | no | complete |
 | `dashboard/pages/watchlist.py` | Watchlist dashboard page | no | complete |
 | `dashboard/pages/token_detail.py` | Token detail dashboard page | no | complete |
@@ -235,6 +236,7 @@ Status values are `not_started`, `partial`, or `complete`.
 | `tests/unit/test_clocks.py` | Freshness fail-closed unit tests | yes | complete |
 | `tests/unit/test_cli_commands.py` | Operator CLI command tests | no | complete |
 | `tests/unit/test_dashboard_queries.py` | Read-only dashboard query tests | no | complete |
+| `tests/unit/test_dashboard_view_models.py` | Command-center view model tests | no | complete |
 | `tests/unit/test_bitunix_models.py` | Bitunix strict parsing and non-execution model tests | no | complete |
 | `tests/unit/test_bitunix_futures_adapter.py` | Mocked Bitunix public REST adapter tests | no | complete |
 | `tests/unit/test_bitunix_cockpit.py` | Bitunix cockpit payload and chart asset tests | no | complete |
