@@ -181,6 +181,43 @@ def inject_command_center_styles() -> None:
           background: rgba(13, 19, 27, 0.62);
           color: var(--traidr-muted);
         }
+        .traidr-static-chart {
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          border-radius: 8px;
+          background: #080b10;
+          overflow: hidden;
+          box-shadow: 0 18px 60px rgba(0,0,0,0.28);
+        }
+        .traidr-static-chart-empty {
+          min-height: 28rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 2rem;
+          color: var(--traidr-muted);
+          text-align: center;
+        }
+        .traidr-static-chart-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+          padding: 0.75rem 0.9rem;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+          color: var(--traidr-text);
+          font-size: 0.9rem;
+        }
+        .traidr-static-chart-header span {
+          margin-left: 0.55rem;
+          color: var(--traidr-muted);
+        }
+        .traidr-candlestick-chart {
+          display: block;
+          width: 100%;
+          min-height: 32rem;
+          font-family: Inter, system-ui, sans-serif;
+        }
         .traidr-sidebar-brand {
           border: 1px solid rgba(32, 217, 255, 0.28);
           border-radius: 8px;

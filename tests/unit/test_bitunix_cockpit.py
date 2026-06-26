@@ -1,7 +1,13 @@
 from datetime import UTC, datetime
 
 import dashboard.app
-from dashboard.bitunix_cockpit import CHART_ENGINE_PATH, build_chart_payload, build_preview_snapshot, insufficient_chart_payload
+from dashboard.bitunix_cockpit import (
+    CHART_ENGINE_PATH,
+    _build_static_chart_html,
+    build_chart_payload,
+    build_preview_snapshot,
+    insufficient_chart_payload,
+)
 from data_pipeline.bitunix_models import (
     BitunixCandle,
     BitunixCockpitSnapshot,
@@ -53,6 +59,26 @@ def test_bitunix_chart_engine_asset_exists_and_has_no_order_controls() -> None:
     assert "Open Long" not in engine
     assert "Open Short" not in engine
     assert dashboard.app is not None
+
+
+def test_bitunix_static_chart_html_contains_visible_svg_candles() -> None:
+    payload = build_chart_payload(_snapshot())
+
+    html = _build_static_chart_html(payload)
+
+    assert "traidr-candlestick-chart" in html
+    assert "<svg" in html
+    assert "<rect" in html
+    assert "can_execute_trades: false" in html
+    assert "Open Long" not in html
+    assert "Open Short" not in html
+
+
+def test_bitunix_static_chart_html_fails_closed_without_candles() -> None:
+    html = _build_static_chart_html(insufficient_chart_payload(["BITUNIX_HTTP_FAILED"]))
+
+    assert "INSUFFICIENT_DATA" in html
+    assert "can_execute_trades: false" in html
 
 
 def _snapshot() -> BitunixCockpitSnapshot:

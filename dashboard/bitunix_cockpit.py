@@ -6,11 +6,11 @@ import asyncio
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
+from html import escape
 from pathlib import Path
 from typing import Any
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from data_pipeline.bitunix_futures_adapter import BitunixFuturesAdapter
 from data_pipeline.bitunix_models import (
@@ -230,17 +230,158 @@ def persist_cockpit_snapshot(database_path: str | Path, snapshot: BitunixCockpit
 
 
 def render_chart(payload: dict[str, Any]) -> None:
-    container_id = f"traidr-bitunix-chart-{abs(hash(json.dumps(payload, sort_keys=True))) % 10_000_000}"
-    engine = CHART_ENGINE_PATH.read_text(encoding="utf-8")
-    html = f"""
-    <div id="{container_id}"></div>
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-    <script>{engine}</script>
-    <script>
-      window.renderTRAIDRBitunixChart({json.dumps(container_id)}, {json.dumps(payload)});
-    </script>
+    """Render a visible chart without relying on external JS/CDN loading."""
+
+    st.markdown(_build_static_chart_html(payload), unsafe_allow_html=True)
+
+
+def _build_static_chart_html(payload: dict[str, Any]) -> str:
+    """Build a deterministic native SVG candlestick chart for Streamlit."""
+
+    candles = payload.get("candles")
+    if payload.get("can_execute_trades") is not False or not isinstance(candles, list) or not candles:
+        reason = escape(str(payload.get("reason") or "No chartable candles were provided."))
+        return f"""
+        <div class="traidr-static-chart traidr-static-chart-empty">
+          <h3>INSUFFICIENT_DATA</h3>
+          <p>{reason}</p>
+          <p>can_execute_trades: false</p>
+        </div>
+        """
+
+    width = 1120
+    height = 620
+    left = 64
+    right = 74
+    top = 34
+    bottom = 58
+    chart_w = width - left - right
+    chart_h = height - top - bottom
+    highs = [float(candle["high"]) for candle in candles]
+    lows = [float(candle["low"]) for candle in candles]
+    prices = highs + lows
+    for level in payload.get("support_resistance", []):
+        prices.append(float(level["price"]))
+    for box in payload.get("risk_reward_boxes", []):
+        prices.extend([float(box["entry"]), float(box["target"]), float(box["stop"])])
+    min_price = min(prices)
+    max_price = max(prices)
+    span = max(max_price - min_price, max_price * 0.01)
+    min_price -= span * 0.08
+    max_price += span * 0.08
+    total_span = max_price - min_price
+    candle_count = len(candles)
+    spacing = chart_w / max(candle_count - 1, 1)
+    body_width = max(4, min(14, spacing * 0.52))
+    by_time = {int(candle["time"]): index for index, candle in enumerate(candles)}
+
+    def x_for_index(index: int) -> float:
+        return left + index * spacing
+
+    def x_for_time(timestamp: Any) -> float:
+        numeric = int(timestamp)
+        if numeric in by_time:
+            return x_for_index(by_time[numeric])
+        times = sorted(by_time)
+        if not times:
+            return left
+        if numeric <= times[0]:
+            return left
+        if numeric >= times[-1]:
+            return left + chart_w
+        for pos, current in enumerate(times[1:], start=1):
+            previous = times[pos - 1]
+            if previous <= numeric <= current:
+                ratio = (numeric - previous) / max(current - previous, 1)
+                return x_for_index(pos - 1) + ratio * spacing
+        return left
+
+    def y_for_price(price: Any) -> float:
+        return top + ((max_price - float(price)) / total_span) * chart_h
+
+    grid = []
+    labels = []
+    for index in range(6):
+        y = top + (chart_h / 5) * index
+        price = max_price - (total_span / 5) * index
+        grid.append(f'<line x1="{left}" y1="{y:.2f}" x2="{left + chart_w}" y2="{y:.2f}" stroke="#17202b" stroke-width="1" />')
+        labels.append(f'<text x="{left + chart_w + 12}" y="{y + 4:.2f}" fill="#9da8b7" font-size="12">{price:.4f}</text>')
+    for index in range(0, candle_count, max(1, candle_count // 8)):
+        x = x_for_index(index)
+        grid.append(f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + chart_h}" stroke="#111923" stroke-width="1" />')
+
+    candle_shapes = []
+    for index, candle in enumerate(candles):
+        x = x_for_index(index)
+        open_y = y_for_price(candle["open"])
+        close_y = y_for_price(candle["close"])
+        high_y = y_for_price(candle["high"])
+        low_y = y_for_price(candle["low"])
+        is_up = float(candle["close"]) >= float(candle["open"])
+        color = "#00c084" if is_up else "#ff4d4f"
+        body_top = min(open_y, close_y)
+        body_h = max(abs(close_y - open_y), 2)
+        candle_shapes.append(f'<line x1="{x:.2f}" y1="{high_y:.2f}" x2="{x:.2f}" y2="{low_y:.2f}" stroke="{color}" stroke-width="1.35" />')
+        candle_shapes.append(
+            f'<rect x="{x - body_width / 2:.2f}" y="{body_top:.2f}" width="{body_width:.2f}" height="{body_h:.2f}" '
+            f'fill="{color}" stroke="{color}" rx="1" />'
+        )
+
+    overlay_shapes = []
+    for level in payload.get("support_resistance", []):
+        y = y_for_price(level["price"])
+        color = escape(str(level.get("color") or "#38bdf8"))
+        label = escape(str(level.get("label") or "S/R"))
+        overlay_shapes.append(f'<line x1="{left}" y1="{y:.2f}" x2="{left + chart_w}" y2="{y:.2f}" stroke="{color}" stroke-width="1.25" stroke-dasharray="6 6" />')
+        overlay_shapes.append(f'<text x="{left + 8}" y="{y - 8:.2f}" fill="{color}" font-size="12">{label}</text>')
+    for zone in payload.get("fvg_zones", []):
+        x1 = x_for_time(zone["start_time"])
+        x2 = x_for_time(zone["end_time"])
+        y1 = y_for_price(zone["high"])
+        y2 = y_for_price(zone["low"])
+        overlay_shapes.append(
+            f'<rect x="{min(x1, x2):.2f}" y="{min(y1, y2):.2f}" width="{abs(x2 - x1):.2f}" height="{max(abs(y2 - y1), 4):.2f}" '
+            'fill="rgba(250, 204, 21, 0.12)" stroke="rgba(250, 204, 21, 0.70)" stroke-width="1" />'
+        )
+    for line in payload.get("overlays", []):
+        x1 = x_for_time(line["start_time"])
+        x2 = x_for_time(line["end_time"])
+        y1 = y_for_price(line["start_price"])
+        y2 = y_for_price(line["end_price"])
+        color = escape(str(line.get("color") or "#22d3ee"))
+        label = escape(str(line.get("label") or line.get("kind") or "line"))
+        overlay_shapes.append(f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" stroke="{color}" stroke-width="2" />')
+        overlay_shapes.append(f'<text x="{x2 + 6:.2f}" y="{y2 - 6:.2f}" fill="{color}" font-size="12">{label}</text>')
+    for box in payload.get("risk_reward_boxes", []):
+        x1 = x_for_time(box["start_time"])
+        x2 = x_for_time(box["end_time"])
+        entry_y = y_for_price(box["entry"])
+        target_y = y_for_price(box["target"])
+        stop_y = y_for_price(box["stop"])
+        overlay_shapes.append(f'<rect x="{min(x1, x2):.2f}" y="{target_y:.2f}" width="{abs(x2 - x1):.2f}" height="{abs(entry_y - target_y):.2f}" fill="rgba(16,185,129,0.14)" stroke="rgba(16,185,129,0.75)" />')
+        overlay_shapes.append(f'<rect x="{min(x1, x2):.2f}" y="{entry_y:.2f}" width="{abs(x2 - x1):.2f}" height="{abs(stop_y - entry_y):.2f}" fill="rgba(239,68,68,0.13)" stroke="rgba(239,68,68,0.75)" />')
+        overlay_shapes.append(f'<line x1="{x1:.2f}" y1="{entry_y:.2f}" x2="{x2:.2f}" y2="{entry_y:.2f}" stroke="#e5e7eb" stroke-dasharray="4 4" />')
+
+    symbol = escape(str(payload.get("symbol") or "TRAIDR"))
+    interval = escape(str(payload.get("interval") or ""))
+    mode = escape(str(payload.get("data_mode") or payload.get("metrics", {}).get("data_mode") or "preview"))
+    last = float(candles[-1]["close"])
+    return f"""
+    <div class="traidr-static-chart">
+      <div class="traidr-static-chart-header">
+        <div><strong>{symbol}</strong> <span>{interval}</span> <span>{mode}</span></div>
+        <div>Last {last:.4f} · can_execute_trades: false</div>
+      </div>
+      <svg class="traidr-candlestick-chart" viewBox="0 0 {width} {height}" role="img" aria-label="{symbol} candlestick chart">
+        <rect x="0" y="0" width="{width}" height="{height}" rx="8" fill="#080b10" />
+        <rect x="{left}" y="{top}" width="{chart_w}" height="{chart_h}" fill="#0a0f16" stroke="#263241" />
+        {''.join(grid)}
+        {''.join(labels)}
+        {''.join(candle_shapes)}
+        {''.join(overlay_shapes)}
+      </svg>
+    </div>
     """
-    components.html(html, height=660, scrolling=False)
 
 
 def _render_cockpit(snapshot: BitunixCockpitSnapshot, *, data_mode: str, status_label: str) -> None:
