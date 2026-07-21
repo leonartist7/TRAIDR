@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import importlib.util
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -31,6 +33,7 @@ from reports.daily_briefing import build_daily_briefing, empty_daily_briefing
 from reports.formatters import format_daily_briefing
 from scheduler.reports import build_research_report
 from scheduler.research_scheduler import ResearchScheduler
+from scheduler.live_service import LiveResearchService
 from scripts.run_simulation import run_simulation
 from storage.duckdb_store import DuckDBStore
 from storage.repositories import IntelligenceRepository, ResearchRepository
@@ -797,6 +800,311 @@ def scheduler_once(database: str | None = None) -> CommandResult:
                     for result in results
                 ).splitlines(),
             ],
+        ),
+    )
+
+
+def doctor(database: str | None = None, *, live: bool = False) -> CommandResult:
+    """Validate runtime, local schema, safety settings, and optional public connectivity."""
+
+    from config.runtime_settings import load_research_settings
+    from data_pipeline.bitunix_futures_adapter import BitunixFuturesAdapter
+
+    checks: dict[str, Any] = {
+        "python": sys.version.split()[0],
+        "python_3_11": sys.version_info[:2] == (3, 11),
+        "duckdb_installed": importlib.util.find_spec("duckdb") is not None,
+        "pydantic_installed": importlib.util.find_spec("pydantic") is not None,
+        "streamlit_installed": importlib.util.find_spec("streamlit") is not None,
+        "websockets_installed": importlib.util.find_spec("websockets") is not None,
+        "live_trading": False,
+        "withdrawals": False,
+        "can_execute_trades": False,
+    }
+    try:
+        settings = load_research_settings("live_public")
+        checks["profile"] = settings.profile.data_mode.value
+        checks["loopback_control"] = settings.service.bind_host == "127.0.0.1"
+        with DuckDBStore(":memory:") as store:
+            initialize_schema(store.connection)
+            checks["schema_tables"] = len(list_tables(store.connection))
+            checks["schema_ok"] = True
+    except Exception as error:
+        checks["schema_ok"] = False
+        checks["configuration_error"] = type(error).__name__
+    if live:
+        result = asyncio.run(BitunixFuturesAdapter().fetch_tickers(("BTCUSDT",)))
+        checks["bitunix_public"] = result.status
+        checks["bitunix_reasons"] = ", ".join(result.reason_codes)
+    required = (
+        "python_3_11",
+        "duckdb_installed",
+        "pydantic_installed",
+        "streamlit_installed",
+        "websockets_installed",
+        "schema_ok",
+    )
+    ok = all(bool(checks.get(name)) for name in required) and (
+        not live or checks.get("bitunix_public") == "OK"
+    )
+    return CommandResult(0 if ok else 1, section("TRAIDR Doctor", key_values(checks).splitlines()))
+
+
+def service_run(database: str | None = None, *, once: bool = False) -> CommandResult:
+    """Run the public-data research service; this command never starts trading."""
+
+    service = LiveResearchService(database_path=_database_path(database))
+    try:
+        asyncio.run(service.run(run_once=once))
+    except KeyboardInterrupt:
+        service.request_stop()
+    return CommandResult(
+        0,
+        section(
+            "TRAIDR Service",
+            [
+                f"database: {service.database_path}",
+                f"mode: {service.settings.profile.data_mode.value}",
+                "status: stopped",
+                "can_execute_trades: false",
+            ],
+        ),
+    )
+
+
+def service_status(database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    if not db_path.exists():
+        return CommandResult(1, f"No local DuckDB database found at {db_path}.")
+    with DuckDBStore(db_path, read_only=True) as store:
+        tables = list_tables(store.connection)
+        heartbeats = (
+            _rows_to_dicts(
+                store.connection.execute(
+                    """
+                    SELECT service_name, heartbeat_at,
+                           CASE
+                               WHEN status = 'RUNNING'
+                                AND heartbeat_at < CURRENT_TIMESTAMP - INTERVAL '30 seconds'
+                               THEN 'STALE'
+                               ELSE status
+                           END AS status,
+                           data_mode
+                    FROM service_heartbeats
+                    ORDER BY heartbeat_at DESC
+                    LIMIT 10
+                    """
+                )
+            )
+            if "service_heartbeats" in tables
+            else []
+        )
+        health = (
+            _rows_to_dicts(
+                store.connection.execute(
+                    """
+                    SELECT source, channel,
+                           CASE
+                               WHEN checked_at < CURRENT_TIMESTAMP - INTERVAL '30 seconds'
+                               THEN 'STALE'
+                               ELSE status
+                           END AS effective_status,
+                           count(*) AS instruments,
+                           max(checked_at) AS last_check,
+                           max(lag_seconds) AS worst_lag_seconds,
+                           max(reconnect_count) AS reconnects,
+                           max(gap_count) AS gaps
+                    FROM data_health
+                    GROUP BY source, channel, effective_status
+                    ORDER BY source, channel, effective_status
+                    """
+                )
+            )
+            if "data_health" in tables
+            else []
+        )
+    output = "\n\n".join(
+        (
+            section(
+                "Service Heartbeats",
+                records_table(heartbeats).splitlines() if heartbeats else ["No heartbeat records."],
+            ),
+            section(
+                "Source Health",
+                records_table(health).splitlines() if health else ["No source-health records."],
+            ),
+            section("Safety", ["local_only: true", "can_execute_trades: false"]),
+        )
+    )
+    return CommandResult(0, output)
+
+
+def replay(database: str | None = None, *, signal_id: str | None = None) -> CommandResult:
+    from data_pipeline.bitunix_models import BitunixCandle
+    from intelligence.production_models import SignalDecision
+    from scoring.replay import replay_signal
+    from storage.market_repository import MarketRepository
+
+    db_path = _database_path(database)
+    if not db_path.exists():
+        return CommandResult(1, f"No local DuckDB database found at {db_path}.")
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        if signal_id:
+            row = store.connection.execute(
+                "SELECT decision_json FROM signal_decisions WHERE signal_id = ?",
+                [signal_id],
+            ).fetchone()
+        else:
+            row = store.connection.execute(
+                "SELECT decision_json FROM signal_decisions ORDER BY generated_at DESC LIMIT 1"
+            ).fetchone()
+        if row is None:
+            return CommandResult(1, "No stored signal is available for replay.")
+        signal = SignalDecision.model_validate(json.loads(row[0]))
+        candle_rows = store.connection.execute(
+            """
+            SELECT open_time_ms, open, high, low, close, quote_volume, base_volume
+            FROM market_candles
+            WHERE instrument_id = ? AND interval = ? AND open_time_ms > ?
+            ORDER BY open_time_ms
+            """,
+            [signal.instrument_id, signal.horizon, int(signal.generated_at.timestamp() * 1000)],
+        ).fetchall()
+        candles = [
+            BitunixCandle(
+                symbol=signal.instrument_id.split(":", 1)[-1],
+                interval=signal.horizon,
+                time=candle_row[0],
+                open=candle_row[1],
+                high=candle_row[2],
+                low=candle_row[3],
+                close=candle_row[4],
+                quoteVol=candle_row[5],
+                baseVol=candle_row[6],
+            )
+            for candle_row in candle_rows
+        ]
+        result = replay_signal(signal, candles)
+        if not result.ok or result.value is None:
+            return CommandResult(1, f"INSUFFICIENT_DATA: {', '.join(result.reason_codes)}")
+        MarketRepository(store.connection).record_outcome(result.value)
+        output = section("TRAIDR Replay", key_values(result.value.model_dump(mode="json")).splitlines())
+        return CommandResult(0, output)
+
+
+def backtest(database: str | None = None) -> CommandResult:
+    from scoring.backtest_engine import run_walk_forward_backtest
+    from scoring.outcome_labeler import label_expired_signals
+
+    db_path = _database_path(database)
+    if not db_path.exists():
+        return CommandResult(1, f"No local DuckDB database found at {db_path}.")
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        labeling = label_expired_signals(store.connection)
+        run = run_walk_forward_backtest(store.connection)
+    if run is None:
+        return CommandResult(
+            1,
+            section(
+                "TRAIDR Walk-Forward Backtest",
+                [
+                    "status: INSUFFICIENT_DATA",
+                    f"signals_evaluated: {labeling.evaluated}",
+                    f"outcomes_labeled: {labeling.labeled}",
+                    "can_execute_trades: false",
+                ],
+            ),
+        )
+    metrics = {
+        **run.metrics,
+        "run_id": run.run_id,
+        "outcomes": run.outcome_count,
+        "replay_hash": run.replay_hash,
+        "no_lookahead_verified": run.no_lookahead_verified,
+        "overlapping_outcomes_excluded": labeling.skipped_overlap,
+        "can_execute_trades": False,
+    }
+    return CommandResult(0, section("TRAIDR Walk-Forward Backtest", key_values(metrics).splitlines()))
+
+
+def certify_shadow(database: str | None = None) -> CommandResult:
+    from scheduler.certification import start_shadow_certification
+
+    db_path = _database_path(database)
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        report = start_shadow_certification(store.connection)
+    output = {
+        "certification_id": report.certification_id,
+        "state": report.state,
+        "started_at": report.started_at.isoformat(),
+        "required_hours": report.required_hours,
+        "paper_simulation_enabled": report.paper_simulation_enabled,
+        "faults_passed": all(report.fault_results.values()),
+        "next": "Run `traidr service run`; use `traidr certify status` during the 72-hour shadow.",
+        "can_execute_trades": False,
+    }
+    return CommandResult(0, section("TRAIDR Shadow Certification", key_values(output).splitlines()))
+
+
+def certify_status(database: str | None = None) -> CommandResult:
+    return _certification_result(database, detailed=False)
+
+
+def certify_report(database: str | None = None) -> CommandResult:
+    return _certification_result(database, detailed=True)
+
+
+def _certification_result(database: str | None, *, detailed: bool) -> CommandResult:
+    from config.runtime_settings import load_research_settings
+    from scheduler.certification import evaluate_shadow_certification
+
+    db_path = _database_path(database)
+    if not db_path.exists():
+        return CommandResult(1, f"No local DuckDB database found at {db_path}.")
+    settings = load_research_settings("live_public")
+    with DuckDBStore(db_path) as store:
+        initialize_schema(store.connection)
+        report = evaluate_shadow_certification(
+            store.connection,
+            database_path=db_path,
+            backup_directory=settings.service.resolved_backup_directory(),
+        )
+    if report is None:
+        return CommandResult(1, "No shadow certification exists. Run `traidr certify shadow` first.")
+    if detailed:
+        payload = report.model_dump(mode="json")
+        lines = json.dumps(payload, indent=2, sort_keys=True).splitlines()
+    else:
+        passed = sum(1 for value in report.gate_results.values() if value)
+        payload = {
+            "certification_id": report.certification_id,
+            "state": report.state,
+            "elapsed_hours": round(report.elapsed_seconds / 3600, 2),
+            "required_hours": report.required_hours,
+            "gates_passed": f"{passed}/{len(report.gate_results)}",
+            "open_gates": ", ".join(name for name, value in report.gate_results.items() if not value),
+            "can_execute_trades": False,
+        }
+        lines = key_values(payload).splitlines()
+    return CommandResult(0 if report.state == "PASSED" else 1, section("TRAIDR Certification Report", lines))
+
+
+def paper_positions(database: str | None = None) -> CommandResult:
+    db_path = _database_path(database)
+    if not db_path.exists():
+        return CommandResult(1, f"No local DuckDB database found at {db_path}.")
+    with DuckDBStore(db_path, read_only=True) as store:
+        positions = _query_table(store, list_tables(store.connection), "paper_futures_positions", 50)
+    return CommandResult(
+        0,
+        section(
+            "Paper Futures Positions",
+            records_table(positions).splitlines()
+            if positions
+            else ["No paper futures positions.", "can_execute_trades: false"],
         ),
     )
 

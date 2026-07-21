@@ -10,13 +10,15 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
+import duckdb
 import streamlit as st
+import streamlit.components.v1 as components
 
 from data_pipeline.bitunix_futures_adapter import BitunixFuturesAdapter
 from data_pipeline.bitunix_models import (
     BITUNIX_ALLOWED_DEPTH_LIMITS,
     BITUNIX_ALLOWED_INTERVALS,
-    BITUNIX_ALLOWED_SYMBOLS,
+    BITUNIX_INTERVAL_SECONDS,
     BitunixAdapterResult,
     BitunixCandle,
     BitunixCockpitSnapshot,
@@ -25,9 +27,9 @@ from data_pipeline.bitunix_models import (
     BitunixOrderBookLevel,
     BitunixTicker,
 )
-from storage.duckdb_store import DuckDBStore
-from storage.repositories import ResearchRepository
-from storage.schema import initialize_schema
+from intelligence.production_models import SignalDecision, SignalDirection
+from scoring.signal_engine import score_directional_setup
+from technicals.multi_horizon import build_multi_horizon_features
 
 CHART_ENGINE_PATH = Path(__file__).resolve().parent / "components" / "chart_engine.js"
 
@@ -45,54 +47,199 @@ def render(database_path: str | Path) -> None:
         unsafe_allow_html=True,
     )
 
-    control_columns = st.columns([1, 1, 1, 1])
-    symbol = control_columns[0].selectbox("Pair", BITUNIX_ALLOWED_SYMBOLS, index=0)
+    symbols = _available_symbols(database_path)
+    control_columns = st.columns([1, 1, 1, 1, 1])
+    symbol = control_columns[0].selectbox("Pair", symbols, index=0)
     interval = control_columns[1].selectbox("Interval", BITUNIX_ALLOWED_INTERVALS, index=3)
     depth_limit = control_columns[2].selectbox("Depth", BITUNIX_ALLOWED_DEPTH_LIMITS, index=2)
-    persist = control_columns[3].checkbox("Persist read-only evidence", value=True)
+    data_mode = control_columns[3].selectbox("Data mode", ("live_public", "preview"), index=0)
+    auto_refresh = control_columns[4].toggle(
+        "Live refresh",
+        value=False,
+        help="Refresh validated public data every 10 seconds while this page is open.",
+    )
+
+    if data_mode == "preview":
+        st.warning("PREVIEW MODE — synthetic demonstration data; never actionable.")
+        _render_cockpit(
+            build_preview_snapshot(symbol, interval),
+            data_mode="preview",
+            status_label="PREVIEW — SYNTHETIC",
+        )
+        return
 
     session_key = f"bitunix:{symbol}:{interval}:{depth_limit}"
+    if auto_refresh:
+        _render_auto_refresh(database_path, symbol, interval, depth_limit)
+        return
+
     if st.button("Refresh Real Bitunix Data", type="primary", use_container_width=True):
         with st.spinner("Fetching public Bitunix futures data..."):
             result = _run_async(BitunixFuturesAdapter().fetch_cockpit_snapshot(symbol, interval, depth_limit))
         st.session_state[session_key] = result
-        if result.ok and persist and isinstance(result.value, BitunixCockpitSnapshot):
-            snapshot_id = persist_cockpit_snapshot(database_path, result.value)
-            st.success(f"Read-only Bitunix evidence saved: {snapshot_id}")
-        elif result.ok:
+        if result.ok:
             st.success("Read-only Bitunix data loaded.")
         else:
             st.error("Bitunix data is insufficient. No bullish data was fabricated.")
 
     result = st.session_state.get(session_key)
     if result is None:
-        snapshot = build_preview_snapshot(symbol, interval)
-        st.info("Preview chart shown. Press Refresh Real Bitunix Data to replace it with public Bitunix data.")
-        _render_cockpit(snapshot, data_mode="preview", status_label="Preview data")
+        st.info("Press Refresh Real Bitunix Data to load validated public market evidence.")
+        render_chart(insufficient_chart_payload(("LIVE_REFRESH_REQUIRED",)))
         return
     if not isinstance(result, BitunixAdapterResult) or not result.ok or not isinstance(result.value, BitunixCockpitSnapshot):
         reason_codes = list(getattr(result, "reason_codes", ("BITUNIX_INSUFFICIENT_DATA",)))
         _render_insufficient(reason_codes)
-        st.info("Real data is unavailable right now, so TRAIDR is showing a clearly marked preview chart instead of fake live data.")
-        _render_cockpit(
-            build_preview_snapshot(symbol, interval),
-            data_mode="preview",
-            status_label="Fail-closed preview",
-        )
+        render_chart(insufficient_chart_payload(reason_codes))
         return
 
     snapshot = result.value
-    _render_cockpit(snapshot, data_mode="live_public_bitunix", status_label="Live public Bitunix data")
+    _render_cockpit(
+        snapshot,
+        data_mode="live_public_bitunix",
+        status_label="Live public Bitunix data",
+        paper_positions=_paper_positions(database_path, symbol),
+        paper_fills=_paper_fills(database_path, symbol),
+    )
 
 
-def build_chart_payload(snapshot: BitunixCockpitSnapshot, *, data_mode: str = "live_public_bitunix") -> dict[str, Any]:
+def _available_symbols(database_path: str | Path) -> tuple[str, ...]:
+    """Return the locally discovered perpetual universe without opening a writer."""
+
+    path = Path(database_path)
+    defaults = ("BTCUSDT", "HYPEUSDT")
+    if not path.exists():
+        return defaults
+    try:
+        with duckdb.connect(str(path), read_only=True) as connection:
+            rows = connection.execute(
+                """
+                SELECT symbol
+                FROM market_instruments
+                WHERE status = 'OPEN' AND quote_asset = 'USDT'
+                ORDER BY symbol
+                """
+            ).fetchall()
+    except (duckdb.Error, OSError):
+        return defaults
+    discovered = tuple(str(row[0]) for row in rows if row and row[0])
+    ordered = tuple(symbol for symbol in defaults if symbol in discovered)
+    remainder = tuple(symbol for symbol in discovered if symbol not in ordered)
+    return ordered + remainder if discovered else defaults
+
+
+def _paper_positions(database_path: str | Path, symbol: str) -> tuple[dict[str, Any], ...]:
+    path = Path(database_path)
+    if not path.exists():
+        return ()
+    try:
+        with duckdb.connect(str(path), read_only=True) as connection:
+            rows = connection.execute(
+                """
+                SELECT position_json
+                FROM paper_futures_positions
+                WHERE instrument_id = ? AND status = 'OPEN'
+                ORDER BY updated_at DESC
+                """,
+                [f"bitunix:{symbol}"],
+            ).fetchall()
+    except (duckdb.Error, OSError):
+        return ()
+    overlays: list[dict[str, Any]] = []
+    for row in rows:
+        try:
+            item = json.loads(str(row[0]))
+            overlays.append(
+                {
+                    "position_id": str(item["position_id"]),
+                    "direction": str(item["direction"]),
+                    "entry": float(item["entry_price"]),
+                    "mark": float(item["mark_price"]),
+                    "stop": float(item["stop_price"]),
+                    "liquidation": float(item["liquidation_price"]),
+                }
+            )
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            continue
+    return tuple(overlays)
+
+
+def _paper_fills(database_path: str | Path, symbol: str) -> tuple[dict[str, Any], ...]:
+    path = Path(database_path)
+    if not path.exists():
+        return ()
+    try:
+        with duckdb.connect(str(path), read_only=True) as connection:
+            rows = connection.execute(
+                """
+                SELECT f.filled_at, f.fill_price, o.direction
+                FROM paper_futures_fills f
+                JOIN paper_futures_orders o ON o.order_id = f.order_id
+                WHERE o.instrument_id = ?
+                ORDER BY f.filled_at DESC
+                LIMIT 100
+                """,
+                [f"bitunix:{symbol}"],
+            ).fetchall()
+    except (duckdb.Error, OSError):
+        return ()
+    return tuple(
+        {
+            "time": int(_as_utc(row[0]).timestamp()),
+            "price": float(row[1]),
+            "direction": str(row[2]),
+        }
+        for row in rows
+    )
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _render_auto_refresh(
+    database_path: str | Path,
+    symbol: str,
+    interval: str,
+    depth_limit: int,
+) -> None:
+    """Render a ten-second live fragment using public endpoints only."""
+
+    @st.fragment(run_every="10s")
+    def live_fragment() -> None:
+        result = _run_async(BitunixFuturesAdapter().fetch_cockpit_snapshot(symbol, interval, depth_limit))
+        if not result.ok or not isinstance(result.value, BitunixCockpitSnapshot):
+            reason_codes = list(result.reason_codes or ("BITUNIX_INSUFFICIENT_DATA",))
+            _render_insufficient(reason_codes)
+            render_chart(insufficient_chart_payload(reason_codes))
+            return
+        st.caption(f"Auto-refreshed at {datetime.now(tz=UTC).isoformat(timespec='seconds')}")
+        _render_cockpit(
+            result.value,
+            data_mode="live_public_bitunix",
+            status_label="Live public Bitunix data",
+            paper_positions=_paper_positions(database_path, symbol),
+            paper_fills=_paper_fills(database_path, symbol),
+        )
+
+    live_fragment()
+
+
+def build_chart_payload(
+    snapshot: BitunixCockpitSnapshot,
+    *,
+    data_mode: str = "live_public_bitunix",
+    paper_positions: tuple[dict[str, Any], ...] = (),
+    paper_fills: tuple[dict[str, Any], ...] = (),
+) -> dict[str, Any]:
     """Build the chart payload consumed by chart_engine.js."""
 
     candles = snapshot.chart_candles()
     support_resistance = _support_resistance(snapshot.candles)
     overlays = _trend_overlays(snapshot.candles)
     fvg_zones = _fair_value_gaps(snapshot.candles)
-    risk_reward_boxes = _risk_reward_boxes(snapshot.candles)
+    signal = _cockpit_signal(snapshot, data_mode=data_mode)
+    risk_reward_boxes = _signal_risk_reward_boxes(signal, snapshot.candles)
     return {
         "symbol": snapshot.symbol,
         "interval": snapshot.interval,
@@ -110,9 +257,15 @@ def build_chart_payload(snapshot: BitunixCockpitSnapshot, *, data_mode: str = "l
             "funding_rate": float(snapshot.funding_rate.funding_rate),
             "next_funding_at": snapshot.funding_rate.next_funding_at.isoformat(),
             "depth_delta_percent": float(snapshot.depth_delta.depth_delta_percent),
-            "opportunity_rating": snapshot.opportunity_rating,
-            "risk_rating": snapshot.risk_rating,
+            "opportunity_rating": signal.opportunity_score if signal else snapshot.opportunity_rating,
+            "risk_rating": signal.risk_score if signal else snapshot.risk_rating,
+            "direction": signal.direction.value if signal else "NO_TRADE",
+            "probability_state": signal.probability_state.value if signal else "UNCALIBRATED",
+            "success_probability": signal.success_probability if signal else None,
         },
+        "signal": signal.model_dump(mode="json") if signal else None,
+        "paper_positions": list(paper_positions),
+        "paper_fills": list(paper_fills),
         "reason_codes": list(snapshot.reason_codes),
         "data_mode": data_mode,
         "can_execute_trades": False,
@@ -126,7 +279,7 @@ def build_preview_snapshot(symbol: str = "HYPEUSDT", interval: str = "1h") -> Bi
     base = 68.0 if symbol == "HYPEUSDT" else 102000.0
     step = 0.42 if symbol == "HYPEUSDT" else 420.0
     pattern = (0, 1.2, -0.4, 1.7, 0.8, 2.0, 1.1, 2.8, 2.2, 3.4, 2.6, 4.1, 3.1, 4.7, 3.9, 5.2)
-    interval_seconds = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600}.get(interval, 3600)
+    interval_seconds = BITUNIX_INTERVAL_SECONDS.get(interval, 3600)
     candles: list[BitunixCandle] = []
     for index, offset in enumerate(pattern):
         open_price = base + (offset * step)
@@ -175,6 +328,7 @@ def build_preview_snapshot(symbol: str = "HYPEUSDT", interval: str = "1h") -> Bi
         funding_rate=BitunixFundingRate(
             symbol=symbol,
             markPrice=str(last),
+            indexPrice=str(last),
             lastPrice=str(last),
             fundingRate="0.0001",
             fundingInterval=8,
@@ -205,34 +359,22 @@ def insufficient_chart_payload(reason_codes: list[str] | tuple[str, ...]) -> dic
     }
 
 
-def persist_cockpit_snapshot(database_path: str | Path, snapshot: BitunixCockpitSnapshot) -> str:
-    path = Path(database_path)
-    if path != Path(":memory:") and path.parent:
-        path.parent.mkdir(parents=True, exist_ok=True)
-    with DuckDBStore(path) as store:
-        initialize_schema(store.connection)
-        repository = ResearchRepository(store.connection)
-        return repository.record_evidence(
-            source_name=f"bitunix_futures:{snapshot.symbol}:{snapshot.interval}",
-            observed_at=snapshot.observed_at,
-            quality_status="sufficient",
-            payload=build_chart_payload(snapshot),
-            provenance={
-                "source": "bitunix",
-                "source_url": "https://fapi.bitunix.com",
-                "symbol": snapshot.symbol,
-                "interval": snapshot.interval,
-                "retrieved_at": datetime.now(tz=UTC).isoformat(),
-                "can_execute_trades": False,
-            },
-            collected_at=datetime.now(tz=UTC),
-        )
-
-
 def render_chart(payload: dict[str, Any]) -> None:
-    """Render a visible chart without relying on external JS/CDN loading."""
+    """Render the locally bundled interactive chart without a network dependency."""
 
-    st.markdown(_build_static_chart_html(payload), unsafe_allow_html=True)
+    engine = CHART_ENGINE_PATH.read_text(encoding="utf-8")
+    safe_payload = json.dumps(payload, separators=(",", ":")).replace("</", "<\\/")
+    components.html(
+        f"""
+        <div id="traidr-bitunix-chart"></div>
+        <script>{engine}</script>
+        <script>
+          window.renderTRAIDRBitunixChart("traidr-bitunix-chart", {safe_payload});
+        </script>
+        """,
+        height=700,
+        scrolling=False,
+    )
 
 
 def _build_static_chart_html(payload: dict[str, Any]) -> str:
@@ -384,18 +526,31 @@ def _build_static_chart_html(payload: dict[str, Any]) -> str:
     """
 
 
-def _render_cockpit(snapshot: BitunixCockpitSnapshot, *, data_mode: str, status_label: str) -> None:
+def _render_cockpit(
+    snapshot: BitunixCockpitSnapshot,
+    *,
+    data_mode: str,
+    status_label: str,
+    paper_positions: tuple[dict[str, Any], ...] = (),
+    paper_fills: tuple[dict[str, Any], ...] = (),
+) -> None:
     """Render the chart beside the intelligence stack."""
 
-    _render_readouts(snapshot, label=status_label)
+    payload = build_chart_payload(
+        snapshot,
+        data_mode=data_mode,
+        paper_positions=paper_positions,
+        paper_fills=paper_fills,
+    )
+    _render_readouts(snapshot, label=status_label, payload=payload)
     chart_column, stack_column = st.columns([3.2, 1], gap="medium")
     with chart_column:
-        render_chart(build_chart_payload(snapshot, data_mode=data_mode))
+        render_chart(payload)
     with stack_column:
-        _render_intelligence_stack(snapshot, data_mode=data_mode)
+        _render_intelligence_stack(snapshot, data_mode=data_mode, payload=payload)
 
 
-def _render_readouts(snapshot: BitunixCockpitSnapshot, *, label: str) -> None:
+def _render_readouts(snapshot: BitunixCockpitSnapshot, *, label: str, payload: dict[str, Any]) -> None:
     st.subheader(f"{snapshot.symbol} · {snapshot.interval} · {label}")
     metrics = st.columns(5)
     metrics[0].metric("Last", f"{float(snapshot.ticker.last_price):,.4f}")
@@ -404,20 +559,29 @@ def _render_readouts(snapshot: BitunixCockpitSnapshot, *, label: str) -> None:
     metrics[3].metric("Depth Delta", f"{float(snapshot.depth_delta.depth_delta_percent):.2f}%")
     metrics[4].metric("Funding", f"{float(snapshot.funding_rate.funding_rate):.5f}")
 
-    score_columns = st.columns(3)
-    score_columns[0].metric("Opportunity Rating", snapshot.opportunity_rating)
-    score_columns[1].metric("Safety Risk", snapshot.risk_rating)
-    score_columns[2].metric("Can Execute Trades", "false")
+    score_columns = st.columns(4)
+    metrics_payload = payload.get("metrics", {})
+    score_columns[0].metric("Direction", metrics_payload.get("direction", "NO_TRADE"))
+    score_columns[1].metric("Opportunity Rating", metrics_payload.get("opportunity_rating", snapshot.opportunity_rating))
+    score_columns[2].metric("Safety Risk", metrics_payload.get("risk_rating", snapshot.risk_rating))
+    score_columns[3].metric("Probability", _probability_label(metrics_payload))
     st.write("Reason codes:", ", ".join(snapshot.reason_codes))
 
 
-def _render_intelligence_stack(snapshot: BitunixCockpitSnapshot, *, data_mode: str) -> None:
+def _render_intelligence_stack(
+    snapshot: BitunixCockpitSnapshot,
+    *,
+    data_mode: str,
+    payload: dict[str, Any],
+) -> None:
     """Render product-facing market intelligence cards next to the chart."""
 
     depth_delta = float(snapshot.depth_delta.depth_delta_percent)
     funding = float(snapshot.funding_rate.funding_rate)
-    opportunity = snapshot.opportunity_rating
-    risk = snapshot.risk_rating
+    metrics_payload = payload.get("metrics", {})
+    opportunity = metrics_payload.get("opportunity_rating", snapshot.opportunity_rating)
+    risk = metrics_payload.get("risk_rating", snapshot.risk_rating)
+    direction = metrics_payload.get("direction", "NO_TRADE")
     market_state = _market_state(snapshot)
     next_action = _next_safe_action(snapshot, data_mode=data_mode)
     why_interesting = _why_interesting(snapshot)
@@ -430,13 +594,14 @@ def _render_intelligence_stack(snapshot: BitunixCockpitSnapshot, *, data_mode: s
         </div>
         <div class="traidr-panel">
           <h3>Market State</h3>
-          <p><strong>{market_state}</strong></p>
+          <p><strong>{market_state} · {direction}</strong></p>
           <p>Mode: {data_mode}</p>
         </div>
         <div class="traidr-panel">
           <h3>Opportunity</h3>
           <p><strong>{opportunity}/100</strong></p>
           <p>{why_interesting}</p>
+          <p>Probability: {_probability_label(metrics_payload)}</p>
         </div>
         <div class="traidr-panel">
           <h3>Risk</h3>
@@ -586,26 +751,83 @@ def _fair_value_gaps(candles: tuple[BitunixCandle, ...]) -> list[dict[str, Any]]
     return zones[-8:]
 
 
-def _risk_reward_boxes(candles: tuple[BitunixCandle, ...]) -> list[dict[str, Any]]:
-    if len(candles) < 2:
+def _cockpit_signal(snapshot: BitunixCockpitSnapshot, *, data_mode: str) -> SignalDecision | None:
+    if data_mode != "live_public_bitunix" or snapshot.interval == "1m":
+        return None
+    bid = snapshot.depth.bids[0].price
+    ask = snapshot.depth.asks[0].price
+    midpoint = (bid + ask) / Decimal("2")
+    spread_bps = float((ask - bid) / midpoint * Decimal("10000")) if midpoint > 0 else None
+    depth_imbalance = float(snapshot.depth_delta.depth_delta_percent / Decimal("50") - Decimal("1"))
+    funding = snapshot.funding_rate
+    basis_bps = float(
+        (funding.mark_price - funding.index_price) / funding.index_price * Decimal("10000")
+    )
+    feature_result = build_multi_horizon_features(
+        instrument_id=f"bitunix:{snapshot.symbol}",
+        horizon=snapshot.interval,
+        candles=snapshot.candles,
+        evidence_ids=(f"cockpit:{snapshot.symbol}:{snapshot.interval}:{snapshot.candles[-1].time_ms}",),
+        depth_imbalance=depth_imbalance,
+        spread_bps=spread_bps,
+        funding_rate=float(funding.funding_rate),
+        basis_bps=basis_bps,
+        now=snapshot.observed_at,
+    )
+    if not feature_result.ok or feature_result.value is None:
+        return None
+    feature = feature_result.value.model_copy(
+        update={
+            "data_coverage": min(feature_result.value.data_coverage, 0.70),
+            "missing_features": (
+                *feature_result.value.missing_features,
+                "cross_market_evidence",
+                "news_context",
+                "onchain_safety",
+            ),
+            "quality_warnings": (
+                *feature_result.value.quality_warnings,
+                "COCKPIT_DIRECT_REFRESH_PARTIAL_COVERAGE",
+            ),
+        }
+    )
+    return score_directional_setup(feature, token_safety_required=False)
+
+
+def _signal_risk_reward_boxes(
+    signal: SignalDecision | None,
+    candles: tuple[BitunixCandle, ...],
+) -> list[dict[str, Any]]:
+    if (
+        signal is None
+        or signal.direction is SignalDirection.NO_TRADE
+        or signal.stop is None
+        or not signal.targets
+        or signal.entry_low is None
+        or signal.entry_high is None
+        or len(candles) < 2
+    ):
         return []
-    recent = candles[-14:] if len(candles) >= 14 else candles
-    entry = float(candles[-1].close)
-    high = max(float(candle.high) for candle in recent)
-    low = min(float(candle.low) for candle in recent)
-    span = max(high - low, entry * 0.005)
+    entry = float((signal.entry_low + signal.entry_high) / Decimal("2"))
     end_time = int(candles[-1].time_ms / 1000)
     start_time = int(candles[max(0, len(candles) - 12)].time_ms / 1000)
     return [
         {
-            "label": "Research bracket",
+            "label": f"{signal.direction.value} research bracket",
             "start_time": start_time,
             "end_time": end_time,
             "entry": entry,
-            "target": entry + span,
-            "stop": max(0.00000001, entry - span * 0.5),
+            "target": float(signal.targets[0]),
+            "stop": float(signal.stop),
         }
     ]
+
+
+def _probability_label(metrics: dict[str, Any]) -> str:
+    probability = metrics.get("success_probability")
+    if probability is None or metrics.get("probability_state") != "CALIBRATED":
+        return "uncalibrated"
+    return f"{float(probability):.1%}"
 
 
 def _run_async(awaitable: Any) -> Any:

@@ -1,24 +1,28 @@
 # TRAIDR Operator Guide
 
-Date: 2026-05-25
+Date: 2026-07-21
 
 ## First Run Setup
 
 Use Python 3.11 as the target runtime, then install dependencies locally:
 
 ```bash
-python -m venv .venv
+uv venv .venv --python 3.11
 .venv\Scripts\activate
-python -m pip install -r requirements.txt
-python -m pip install -e .
+python -m pip install -r requirements.lock
 ```
 
 Verify the environment:
 
 ```bash
-python -m pytest
+.venv\Scripts\python.exe -m pytest
+.venv\Scripts\python.exe -m ruff check .
+.venv\Scripts\python.exe -m mypy intelligence data_pipeline execution risk scoring storage config
+python -m cli.main doctor --live
 python -m cli.main status
 ```
+
+For the always-on public research service, use the two-terminal Windows procedure in `docs/PRODUCTION_RESEARCH_SERVICE.md`.
 
 ## Daily Workflow
 
@@ -32,7 +36,7 @@ python -m cli.main radar --database storage/duckdb/traidr.duckdb
 python -m cli.main alerts --database storage/duckdb/traidr.duckdb
 ```
 
-Run commands one at a time against the same DuckDB file. If the dashboard is open, close it before running write commands against that database.
+Legacy write commands should still run one at a time. In production mode, `service run` is the only writer and the dashboard remains read-only.
 
 ## Fixture Scan
 
@@ -79,7 +83,23 @@ python -m cli.main dashboard
 python -m streamlit run dashboard/app.py -- --database storage/duckdb/traidr.duckdb
 ```
 
-Use the Command Center buttons for Daily Workflow, Fixture Scan, Paper Simulation, Briefing, Alerts, Scheduler Once, Fixture Radar, and Status. The buttons are allowlisted local actions; they do not live trade, withdraw, access secrets, or execute arbitrary terminal commands.
+The production dashboard is read-only. Its only state-changing controls call the loopback research service for
+refresh, paper enable, or paper disable. No exchange, wallet, credential, transfer, or arbitrary command endpoint exists.
+
+## Production Certification
+
+Run collection-only shadow mode with paper simulation disabled:
+
+```bash
+python -m cli.main certify shadow --database data/traidr.duckdb
+python -m cli.main service run --database data/traidr.duckdb
+python -m cli.main certify status --database data/traidr.duckdb
+python -m cli.main certify report --database data/traidr.duckdb
+```
+
+Certification cannot pass before 72 real hours, fresh top-50 coverage, recoverable backups, and repeatable
+multi-day replay hashes are present. Probability remains `uncalibrated` until a side/horizon bucket has at least
+500 independent out-of-sample outcomes and calibration error at or below 5%.
 
 ## Alerts
 
@@ -123,7 +143,7 @@ Unknown questions return suggestions instead of taking actions.
 
 ## Troubleshooting
 
-- DuckDB file lock: close the dashboard or other terminal using the same `.duckdb` file, then retry.
+- DuckDB file lock: confirm only one research service owns the database; the production dashboard uses read-only connections.
 - Empty radar: run `scan --fixture --database <path>` or `daily-run --database <path>` first.
 - Empty briefing: run `daily-run --database <path>` or collect scan/radar/alert evidence first.
 - Real-source failure: treat `INSUFFICIENT_DATA` as expected fail-closed behavior and retry later.

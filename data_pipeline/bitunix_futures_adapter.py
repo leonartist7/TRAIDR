@@ -22,6 +22,7 @@ from data_pipeline.bitunix_models import (
     BitunixDepthSnapshot,
     BitunixFundingRate,
     BitunixTicker,
+    BitunixTradingPair,
     parse_order_book_levels,
     validation_error_reason,
 )
@@ -74,7 +75,38 @@ class BitunixFuturesAdapter:
                 return BitunixAdapterResult.insufficient("BITUNIX_TICKERS_MISSING")
             return BitunixAdapterResult.success(tickers, "BITUNIX_TICKERS_OK", "NO_EXECUTION_ACTION")
         except Exception as error:
-            return _insufficient_from_error(error, "BITUNIX_TICKERS_FAILED")
+            return _insufficient_from_error(error, "BITUNIX_TICKERS")
+
+    async def fetch_trading_pairs(
+        self,
+        symbols: tuple[str, ...] = (),
+    ) -> BitunixAdapterResult:
+        """Discover open public USDT perpetual instruments without credentials."""
+
+        normalized = _normalize_symbols(symbols)
+        if symbols and not normalized:
+            return BitunixAdapterResult.insufficient("BITUNIX_UNSUPPORTED_SYMBOL")
+        try:
+            params = {"symbols": ",".join(normalized)} if normalized else {}
+            raw = await self._get_json("/api/v1/futures/market/trading_pairs", params)
+            data = _required_data(raw)
+            if not isinstance(data, list) or not data:
+                return BitunixAdapterResult.insufficient("BITUNIX_TRADING_PAIRS_MISSING")
+            pairs = [BitunixTradingPair.model_validate(_require_mapping(item)) for item in data]
+            open_pairs = [
+                pair
+                for pair in pairs
+                if pair.quote.upper() == "USDT" and pair.symbol_status.upper() == "OPEN"
+            ]
+            if not open_pairs:
+                return BitunixAdapterResult.insufficient("BITUNIX_NO_OPEN_USDT_PAIRS")
+            return BitunixAdapterResult.success(
+                open_pairs,
+                "BITUNIX_TRADING_PAIRS_OK",
+                "NO_EXECUTION_ACTION",
+            )
+        except Exception as error:
+            return _insufficient_from_error(error, "BITUNIX_TRADING_PAIRS")
 
     async def fetch_kline(self, symbol: str, interval: str, limit: int = 200) -> BitunixAdapterResult:
         normalized_symbol = _normalize_symbol(symbol)
@@ -106,7 +138,7 @@ class BitunixFuturesAdapter:
                 reason_codes.append("BITUNIX_KLINE_DROPPED_MALFORMED_CANDLES")
             return BitunixAdapterResult.success(list(candles), *tuple(reason_codes))
         except Exception as error:
-            return _insufficient_from_error(error, "BITUNIX_KLINE_FAILED")
+            return _insufficient_from_error(error, "BITUNIX_KLINE")
 
     async def fetch_funding_rate(self, symbol: str) -> BitunixAdapterResult:
         normalized_symbol = _normalize_symbol(symbol)
@@ -124,7 +156,7 @@ class BitunixFuturesAdapter:
             )
             return BitunixAdapterResult.success(funding, "BITUNIX_FUNDING_OK", "NO_EXECUTION_ACTION")
         except Exception as error:
-            return _insufficient_from_error(error, "BITUNIX_FUNDING_FAILED")
+            return _insufficient_from_error(error, "BITUNIX_FUNDING")
 
     async def fetch_depth(self, symbol: str, limit: str = "15") -> BitunixAdapterResult:
         normalized_symbol = _normalize_symbol(symbol)
@@ -148,7 +180,7 @@ class BitunixFuturesAdapter:
             depth.depth_delta()
             return BitunixAdapterResult.success(depth, "BITUNIX_DEPTH_OK", "NO_EXECUTION_ACTION")
         except Exception as error:
-            return _insufficient_from_error(error, "BITUNIX_DEPTH_FAILED")
+            return _insufficient_from_error(error, "BITUNIX_DEPTH")
 
     async def fetch_cockpit_snapshot(
         self,
@@ -229,7 +261,11 @@ class BitunixFuturesAdapter:
 
 def _normalize_symbol(symbol: str) -> str | None:
     normalized = symbol.upper().strip()
-    return normalized if normalized in BITUNIX_ALLOWED_SYMBOLS else None
+    try:
+        BitunixTicker._valid_symbol(normalized)
+    except (TypeError, ValueError):
+        return None
+    return normalized
 
 
 def _normalize_symbols(symbols: tuple[str, ...]) -> tuple[str, ...]:
@@ -323,14 +359,14 @@ def _risk_rating(
     return max(0, min(100, risk))
 
 
-def _insufficient_from_error(error: Exception, fallback: str) -> BitunixAdapterResult:
+def _insufficient_from_error(error: Exception, endpoint: str) -> BitunixAdapterResult:
     if isinstance(error, BitunixApiError):
-        return BitunixAdapterResult.insufficient("BITUNIX_API_ERROR")
+        return BitunixAdapterResult.insufficient(f"{endpoint}_API_ERROR")
     if isinstance(error, (httpx.HTTPError, TimeoutError)):
-        return BitunixAdapterResult.insufficient("BITUNIX_HTTP_FAILED")
+        return BitunixAdapterResult.insufficient(f"{endpoint}_HTTP_FAILED")
     if isinstance(error, (ValidationError, ValueError, TypeError)):
-        return BitunixAdapterResult.insufficient(validation_error_reason(error))
-    return BitunixAdapterResult.insufficient(fallback)
+        return BitunixAdapterResult.insufficient(validation_error_reason(error, endpoint))
+    return BitunixAdapterResult.insufficient(f"{endpoint}_FAILED")
 
 
 class BitunixApiError(RuntimeError):

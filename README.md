@@ -25,12 +25,12 @@ Every future `BUY` or `SELL` intent must pass deterministic risk validation befo
 
 ## Setup
 
-Use Python 3.11 for the target runtime.
+Release `0.2.0` targets Python 3.11. The repository includes a fully resolved lock file.
 
 ```bash
-python -m venv .venv
+uv venv .venv --python 3.11
 .venv\Scripts\activate
-python -m pip install -r requirements.txt
+python -m pip install -r requirements.lock
 ```
 
 ## Run Simulation
@@ -78,6 +78,15 @@ traidr watch list
 traidr portfolio report
 traidr dashboard
 traidr scheduler-once
+traidr doctor --live
+traidr service run
+traidr service status
+traidr replay
+traidr backtest
+traidr paper positions
+traidr certify shadow
+traidr certify status
+traidr certify report
 ```
 
 `traidr dashboard` prints the Streamlit launch command instead of opening it automatically. See `docs/cli.md`.
@@ -88,6 +97,22 @@ CLI commands accept `--database` before or after the subcommand:
 traidr inspect --database storage/duckdb/traidr_test.duckdb
 ```
 
+## Always-On Public Research
+
+TRAIDR now has a supervised, single-writer service for validated public Bitunix market data, multi-horizon evidence, directional research decisions, and deterministic paper-futures simulation. Start it separately from the read-only dashboard:
+
+```bash
+python -m cli.main doctor --live
+python -m cli.main service run --database data/traidr.duckdb
+python -m streamlit run dashboard/app.py -- --database data/traidr.duckdb
+```
+
+The production service supports public data only. It contains no authenticated exchange client and no route from a signal, model, dashboard, or paper fill to a real order. See `docs/PRODUCTION_RESEARCH_SERVICE.md` for the Windows runbook, safe rollout, recovery, and release gates.
+
+Current verification and open certification gates are tracked in `docs/PRODUCTION_READINESS_STATUS.md`.
+Start the 72-hour collection-only gate with `traidr certify shadow`. The command records deterministic
+fault-injection results but does not pretend that elapsed time or live coverage has passed.
+
 ## Dashboard
 
 Run the local dashboard:
@@ -96,9 +121,7 @@ Run the local dashboard:
 python -m streamlit run dashboard/app.py
 ```
 
-The dashboard opens as a visual Command Center. The first screen is the `Cockpit`: a native Bitunix public-data chart, an intelligence stack, a daily mission checklist, and safe local workflow buttons. The `Operations` tab contains the fuller command launcher for Daily Workflow, Fixture Scan, Paper Simulation, Generate Alerts, Scheduler Once, and Status/Inspect DB.
-
-Dashboard buttons run allowlisted local Python actions. They do not live trade, withdraw, access secrets, or execute arbitrary terminal commands.
+The dashboard opens as a read-only visual Command Center. The `Cockpit` has a locally bundled interactive chart, live public refresh, multi-horizon intelligence, risk/reward levels, paper overlays, and explicit stale/gap states. The dashboard never opens a DuckDB writer. Its only state-changing controls call the service's allowlisted `127.0.0.1` refresh and paper-toggle endpoints.
 
 See `docs/dashboard.md` for details.
 
@@ -119,7 +142,7 @@ Ask TRAIDR is read-only and returns suggestions for unsupported questions. See `
 
 ## Market Intelligence
 
-TRAIDR can score local macro/news fixtures, combine structured non-executing agent analyses, rank watchlist opportunities, record local alert history, and run deterministic scheduler ticks from Python modules. The scheduler is intentionally a callable local research primitive, not a hidden daemon.
+TRAIDR can score local macro/news fixtures, combine structured non-executing agent analyses, rank watchlist opportunities, record local alert history, run deterministic scheduler ticks, and supervise the explicit always-on public research service.
 
 Key modules:
 
@@ -307,13 +330,14 @@ See `docs/graphify.md` for the optional Codex and PowerShell workflow.
 
 TRAIDR uses explicit boundaries:
 
-1. Free data adapters collect source observations.
-2. The data pipeline validates freshness, shape, provenance, and confidence.
-3. Technical and safety modules build deterministic vectors and anti-rug evidence.
-4. Agents receive scrubbed TOON-compressed research payloads and return bounded intents.
-5. The deterministic risk engine approves, rejects, or degrades decisions.
-6. The simulation broker records paper-only portfolio changes in DuckDB.
-7. Market intelligence modules persist recommendations, alerts, scheduler runs, and reports without execution authority.
+1. Public adapters collect REST snapshots and WebSocket events.
+2. The data pipeline validates freshness, identity, sequence, shape, and provenance.
+3. A single-writer service stores normalized evidence and data health in DuckDB.
+4. Versioned multi-horizon features produce explainable `LONG`, `SHORT`, or `NO_TRADE` research decisions.
+5. Walk-forward calibration may expose a percentage only after its strict evidence gate passes.
+6. The deterministic risk gate approves, rejects, or degrades local paper decisions.
+7. The perpetual-futures simulator records costs, margin, positions, fills, funding, and drawdown without execution authority.
+8. The dashboard reads state and uses only loopback allowlisted controls.
 
 See `SPEC.md`, `SAFETY_RULES.md`, and `IMPLEMENTATION_PLAN.md` before implementing runtime modules.
 
@@ -321,13 +345,13 @@ The MVP implementation is described further in `docs/architecture.md`, `docs/saf
 
 ## Not Implemented
 
-- Live trading, exchange order routing, and live market loops.
+- Live trading, authenticated exchange access, and exchange order routing.
 - Withdrawals, transfers, bridging, custody, signing, or private-key handling.
 - Real LLM provider calls.
 - Paid APIs or key-required source adapters.
-- Background autonomous notification daemons.
+- Autonomous real-money or wallet-connected background processes.
 - Notification secrets or tokens stored by TRAIDR.
 
 ## Next Roadmap
 
-The next safe increments are richer fixture and adapter coverage, config loading for local operator settings, portfolio snapshots, and deeper research reporting while preserving the deterministic risk and simulation boundaries.
+The next safe increments are the 72-hour collection shadow gate, more independently verified public cross-check adapters, larger out-of-sample outcome sets, and champion/challenger promotion only after calibration and stability gates pass.

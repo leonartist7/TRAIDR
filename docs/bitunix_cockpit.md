@@ -1,6 +1,6 @@
 # Bitunix Futures Cockpit
 
-Phase 42 adds a native TRAIDR futures research cockpit for Bitunix public futures data.
+The native TRAIDR futures research cockpit displays validated Bitunix public futures data and locally computed evidence.
 
 ## Safety Boundary
 
@@ -18,13 +18,12 @@ Start the dashboard:
 python -m streamlit run dashboard/app.py
 ```
 
-Open the `Bitunix Futures` tab, choose a pair and interval, then press `Refresh Bitunix Public Data`.
+Open the `Bitunix Futures` tab, choose a discovered pair and interval, then press `Refresh Real Bitunix Data`. Enable `Live refresh` for a validated ten-second refresh loop.
 
-The first version supports:
+The cockpit supports:
 
-- `HYPEUSDT`
-- `BTCUSDT`
-- `1m`, `5m`, `15m`, `1h`
+- the service-discovered open USDT perpetual universe, with BTC and HYPE defaults before discovery
+- `1m`, `5m`, `15m`, `1h`, `4h`, and `1d`
 - public tickers
 - public klines
 - public funding rate
@@ -32,7 +31,7 @@ The first version supports:
 
 ## Chart Engine
 
-The cockpit renders a native Lightweight Charts canvas loaded from CDN. It does not use screenshots and does not embed the Bitunix trading UI.
+The cockpit renders a locally bundled, pinned canvas engine. It makes no CDN request, uses no screenshots, and does not embed the Bitunix trading UI.
 
 The overlay layer draws:
 
@@ -40,6 +39,9 @@ The overlay layer draws:
 - fair value gap zones
 - support and resistance levels
 - research-only risk/reward brackets
+- crosshair, zoom, pan, volume, visible gaps, signal expiry, and paper-position overlays
+
+Preview data is available only through the explicit `preview` data mode and is permanently watermarked. It is never substituted for failed live data.
 
 ## Failure Behavior
 

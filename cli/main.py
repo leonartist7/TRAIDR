@@ -108,6 +108,27 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("dashboard", help="Print the safe Streamlit dashboard launch command.")
     subparsers.add_parser("scheduler-once", help="Run due local research scheduler tasks once.")
 
+    doctor_parser = subparsers.add_parser("doctor", help="Validate the local production-research runtime.")
+    doctor_parser.add_argument("--live", action="store_true", help="Also verify public Bitunix connectivity.")
+
+    service_parser = subparsers.add_parser("service", help="Run or inspect the always-on research service.")
+    service_subparsers = service_parser.add_subparsers(dest="service_command", required=True)
+    service_run_parser = service_subparsers.add_parser("run", help="Run the live-public research service.")
+    service_run_parser.add_argument("--once", action="store_true", help="Run one discovery/analysis cycle and stop.")
+    service_subparsers.add_parser("status", help="Show persisted service and source health.")
+
+    replay_parser = subparsers.add_parser("replay", help="Replay a stored signal without look-ahead.")
+    replay_parser.add_argument("--signal-id")
+    subparsers.add_parser("backtest", help="Summarize stored cost-aware replay outcomes.")
+    paper_parser = subparsers.add_parser("paper", help="Inspect perpetual-futures paper simulation state.")
+    paper_subparsers = paper_parser.add_subparsers(dest="paper_command", required=True)
+    paper_subparsers.add_parser("positions", help="List perpetual-futures paper positions.")
+    certify_parser = subparsers.add_parser("certify", help="Run or inspect collection-only production certification.")
+    certify_subparsers = certify_parser.add_subparsers(dest="certify_command", required=True)
+    certify_subparsers.add_parser("shadow", help="Start the 72-hour collection-only shadow gate.")
+    certify_subparsers.add_parser("status", help="Evaluate current shadow gates without claiming elapsed time.")
+    certify_subparsers.add_parser("report", help="Print the auditable current certification report.")
+
     return parser
 
 
@@ -210,6 +231,33 @@ def main(argv: list[str] | None = None) -> int:
         result = commands.dashboard(args.database)
     elif args.command == "scheduler-once":
         result = commands.scheduler_once(args.database)
+    elif args.command == "doctor":
+        result = commands.doctor(args.database, live=args.live)
+    elif args.command == "service":
+        if args.service_command == "run":
+            result = commands.service_run(args.database, once=args.once)
+        elif args.service_command == "status":
+            result = commands.service_status(args.database)
+        else:  # pragma: no cover
+            raise AssertionError(f"unsupported service command: {args.service_command}")
+    elif args.command == "replay":
+        result = commands.replay(args.database, signal_id=args.signal_id)
+    elif args.command == "backtest":
+        result = commands.backtest(args.database)
+    elif args.command == "paper":
+        if args.paper_command == "positions":
+            result = commands.paper_positions(args.database)
+        else:  # pragma: no cover
+            raise AssertionError(f"unsupported paper command: {args.paper_command}")
+    elif args.command == "certify":
+        if args.certify_command == "shadow":
+            result = commands.certify_shadow(args.database)
+        elif args.certify_command == "status":
+            result = commands.certify_status(args.database)
+        elif args.certify_command == "report":
+            result = commands.certify_report(args.database)
+        else:  # pragma: no cover
+            raise AssertionError(f"unsupported certify command: {args.certify_command}")
     else:  # pragma: no cover - argparse prevents this branch
         raise AssertionError(f"unsupported command: {args.command}")
     print(result.output)

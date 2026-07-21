@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +35,27 @@ class DashboardData:
     simulated_fills: list[dict[str, Any]]
     audit_events: list[dict[str, Any]]
     safety_status: dict[str, Any]
+    signal_decisions: list[dict[str, Any]] = field(default_factory=list)
+    data_health: list[dict[str, Any]] = field(default_factory=list)
+    service_heartbeats: list[dict[str, Any]] = field(default_factory=list)
+    paper_futures_positions: list[dict[str, Any]] = field(default_factory=list)
+    paper_futures_portfolios: list[dict[str, Any]] = field(default_factory=list)
+    calibration_reports: list[dict[str, Any]] = field(default_factory=list)
+    feature_snapshots: list[dict[str, Any]] = field(default_factory=list)
+    evidence_bundles: list[dict[str, Any]] = field(default_factory=list)
+    market_microstructure: list[dict[str, Any]] = field(default_factory=list)
+    news_evidence: list[dict[str, Any]] = field(default_factory=list)
+    onchain_evidence: list[dict[str, Any]] = field(default_factory=list)
+    ingestion_gaps: list[dict[str, Any]] = field(default_factory=list)
+    provider_circuits: list[dict[str, Any]] = field(default_factory=list)
+    paper_futures_orders: list[dict[str, Any]] = field(default_factory=list)
+    paper_futures_fills: list[dict[str, Any]] = field(default_factory=list)
+    paper_funding_events: list[dict[str, Any]] = field(default_factory=list)
+    paper_order_events: list[dict[str, Any]] = field(default_factory=list)
+    paper_stress_snapshots: list[dict[str, Any]] = field(default_factory=list)
+    model_artifacts: list[dict[str, Any]] = field(default_factory=list)
+    certification_runs: list[dict[str, Any]] = field(default_factory=list)
+    decision_audit: list[dict[str, Any]] = field(default_factory=list)
 
 
 def configured_database_path() -> Path:
@@ -102,10 +123,22 @@ def load_dashboard_data(
                 tables,
                 "opportunity_radar_states",
                 """
+                WITH latest AS (
+                    SELECT subject_id, state, rank, risk_score, opportunity_score, confidence,
+                           reason_codes_json, payload_json, recorded_at,
+                           row_number() OVER (
+                               PARTITION BY subject_id ORDER BY recorded_at DESC, radar_state_id DESC
+                           ) AS row_number
+                    FROM opportunity_radar_states
+                    WHERE recorded_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                      AND lower(subject_id) NOT LIKE 'fixture-%'
+                      AND lower(payload_json) NOT LIKE '%"data_mode":"fixture"%'
+                )
                 SELECT subject_id, state, rank, risk_score, opportunity_score, confidence,
-                       reason_codes_json, payload_json
-                FROM opportunity_radar_states
-                ORDER BY risk_score DESC, opportunity_score DESC, recorded_at DESC
+                       reason_codes_json, payload_json, recorded_at
+                FROM latest
+                WHERE row_number = 1
+                ORDER BY opportunity_score - risk_score DESC, recorded_at DESC
                 LIMIT ?
                 """,
                 limit,
@@ -270,6 +303,221 @@ def load_dashboard_data(
                 limit,
             ),
             safety_status=safety,
+            signal_decisions=_query_if_table(
+                connection,
+                tables,
+                "signal_decisions",
+                """
+                WITH latest AS (
+                    SELECT signal_id, instrument_id, direction, horizon, setup_type,
+                           generated_at, expires_at, opportunity_score, risk_score,
+                           data_coverage, probability_state, success_probability,
+                           calibration_sample_size, model_version, decision_json,
+                           row_number() OVER (
+                               PARTITION BY instrument_id, horizon ORDER BY generated_at DESC, signal_id DESC
+                           ) AS row_number
+                    FROM signal_decisions
+                    WHERE expires_at > CURRENT_TIMESTAMP
+                )
+                SELECT * EXCLUDE (row_number)
+                FROM latest
+                WHERE row_number = 1
+                ORDER BY opportunity_score - risk_score DESC, generated_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            data_health=_query_if_table(
+                connection,
+                tables,
+                "data_health",
+                """
+                SELECT source, instrument_id, channel, checked_at,
+                       CASE
+                           WHEN checked_at < CURRENT_TIMESTAMP - INTERVAL '30 seconds' THEN 'STALE'
+                           ELSE status
+                       END AS status,
+                       last_event_at,
+                       lag_seconds, reconnect_count, gap_count, coverage, reason_codes_json
+                FROM data_health
+                ORDER BY CASE
+                             WHEN checked_at < CURRENT_TIMESTAMP - INTERVAL '30 seconds' THEN 0
+                             WHEN status = 'DOWN' THEN 1
+                             WHEN status = 'DEGRADED' THEN 2
+                             ELSE 3
+                         END,
+                         checked_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            service_heartbeats=_query_if_table(
+                connection,
+                tables,
+                "service_heartbeats",
+                """
+                SELECT service_name, process_id, started_at, heartbeat_at,
+                       CASE
+                           WHEN status = 'RUNNING'
+                            AND heartbeat_at < CURRENT_TIMESTAMP - INTERVAL '30 seconds'
+                           THEN 'STALE'
+                           ELSE status
+                       END AS status,
+                       data_mode, details_json
+                FROM service_heartbeats
+                ORDER BY heartbeat_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            paper_futures_positions=_query_if_table(
+                connection,
+                tables,
+                "paper_futures_positions",
+                """
+                SELECT position_id, instrument_id, direction, opened_at, updated_at, status, position_json
+                FROM paper_futures_positions
+                ORDER BY CASE status WHEN 'OPEN' THEN 0 ELSE 1 END, updated_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            paper_futures_portfolios=_query_if_table(
+                connection,
+                tables,
+                "paper_futures_portfolios",
+                """
+                SELECT portfolio_snapshot_id, captured_at, equity_usd, cash_usd,
+                       used_margin_usd, daily_pnl_usd, halted, snapshot_json
+                FROM paper_futures_portfolios
+                ORDER BY captured_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            calibration_reports=_query_if_table(
+                connection,
+                tables,
+                "calibration_reports",
+                """
+                SELECT calibration_id, direction, horizon, generated_at, sample_size,
+                       brier_score, expected_calibration_error, method,
+                       eligible_for_display, reason_codes_json
+                FROM calibration_reports
+                ORDER BY generated_at DESC
+                LIMIT ?
+                """,
+                limit,
+            ),
+            feature_snapshots=_query_if_table(
+                connection, tables, "feature_snapshots",
+                """
+                SELECT feature_id, instrument_id, horizon, observed_at, regime,
+                       data_coverage, features_json, missing_features_json,
+                       quality_warnings_json, contradiction_flags_json, evidence_ids_json
+                FROM feature_snapshots ORDER BY calculated_at DESC LIMIT ?
+                """, limit,
+            ),
+            evidence_bundles=_query_if_table(
+                connection, tables, "evidence_bundles",
+                """
+                SELECT bundle_id, instrument_id, canonical_asset_id, observed_at,
+                       data_coverage, hard_vetoes_json, reason_codes_json, bundle_json
+                FROM evidence_bundles ORDER BY generated_at DESC LIMIT ?
+                """, limit,
+            ),
+            market_microstructure=_query_if_table(
+                connection, tables, "market_microstructure",
+                """
+                SELECT metric_id, instrument_id, observed_at, bid_price, ask_price,
+                       spread_bps, depth_imbalance, trade_delta, basis_bps, funding_rate, payload_json
+                FROM market_microstructure ORDER BY observed_at DESC LIMIT ?
+                """, limit,
+            ),
+            news_evidence=_query_if_table(
+                connection, tables, "news_evidence",
+                """
+                SELECT evidence_id, canonical_asset_id, source, headline, url, published_at,
+                       reliability, relevance, age_weight, mapping_state, reason_codes_json
+                FROM news_evidence ORDER BY observed_at DESC LIMIT ?
+                """, limit,
+            ),
+            onchain_evidence=_query_if_table(
+                connection, tables, "onchain_evidence",
+                """
+                SELECT evidence_id, canonical_asset_id, source, chain_id, contract_address,
+                       observed_at, coverage, hard_vetoes_json, reason_codes_json, evidence_json
+                FROM onchain_evidence ORDER BY observed_at DESC LIMIT ?
+                """, limit,
+            ),
+            ingestion_gaps=_query_if_table(
+                connection, tables, "ingestion_gaps",
+                """
+                SELECT gap_id, source, instrument_id, channel, interval, detected_at,
+                       gap_start, gap_end, status, attempts, updated_at, reason_codes_json
+                FROM ingestion_gaps ORDER BY updated_at DESC NULLS LAST LIMIT ?
+                """, limit,
+            ),
+            provider_circuits=_query_if_table(
+                connection, tables, "provider_circuits",
+                """
+                SELECT provider, channel, state, failure_count, opened_at, retry_after,
+                       updated_at, reason_codes_json
+                FROM provider_circuits ORDER BY updated_at DESC LIMIT ?
+                """, limit,
+            ),
+            paper_futures_orders=_query_if_table(
+                connection, tables, "paper_futures_orders",
+                "SELECT * FROM paper_futures_orders ORDER BY created_at DESC LIMIT ?", limit,
+            ),
+            paper_futures_fills=_query_if_table(
+                connection, tables, "paper_futures_fills",
+                "SELECT * FROM paper_futures_fills ORDER BY filled_at DESC LIMIT ?", limit,
+            ),
+            paper_funding_events=_query_if_table(
+                connection, tables, "paper_funding_events",
+                "SELECT * FROM paper_funding_events ORDER BY applied_at DESC LIMIT ?", limit,
+            ),
+            paper_order_events=_query_if_table(
+                connection, tables, "paper_order_events",
+                "SELECT * FROM paper_order_events ORDER BY event_at DESC LIMIT ?", limit,
+            ),
+            paper_stress_snapshots=_query_if_table(
+                connection, tables, "paper_stress_snapshots",
+                "SELECT * FROM paper_stress_snapshots ORDER BY captured_at DESC LIMIT ?", limit,
+            ),
+            model_artifacts=_query_if_table(
+                connection, tables, "model_artifact_manifests",
+                """
+                SELECT artifact_id, model_id, version, direction, horizon, role, sha256,
+                       rollback_artifact_id, active, created_at, metrics_json
+                FROM model_artifact_manifests ORDER BY created_at DESC LIMIT ?
+                """, limit,
+            ),
+            certification_runs=_query_if_table(
+                connection, tables, "certification_runs",
+                """
+                SELECT certification_id, started_at, evaluated_at, required_hours,
+                       elapsed_seconds, state, paper_simulation_enabled, report_json
+                FROM certification_runs ORDER BY evaluated_at DESC LIMIT ?
+                """, limit,
+            ),
+            decision_audit=_query_if_table(
+                connection, tables, "signal_decisions",
+                """
+                WITH changes AS (
+                    SELECT signal_id, instrument_id, horizon, generated_at, direction,
+                           lag(direction) OVER (
+                               PARTITION BY instrument_id, horizon ORDER BY generated_at, signal_id
+                           ) AS previous_direction,
+                           opportunity_score, risk_score, probability_state, model_version
+                    FROM signal_decisions
+                )
+                SELECT * FROM changes
+                WHERE previous_direction IS NULL OR direction <> previous_direction
+                ORDER BY generated_at DESC LIMIT ?
+                """, limit,
+            ),
         )
 
 

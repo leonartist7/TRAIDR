@@ -1,0 +1,41 @@
+name: production-candidate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install locked runtime and verification tools
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.lock
+      - name: Install local browser test runtime
+        run: python -m playwright install chromium
+      - name: Compile Python
+        run: python -m compileall -q agents alerts ask cli config dashboard data_pipeline execution intelligence lifecycle memory notifications onchain operator portfolio radar reports risk scheduler scoring sentiment storage technicals thesis token_detail utils watchlist
+      - name: Ruff
+        run: python -m ruff check .
+      - name: Mypy production contracts
+        run: python -m mypy intelligence data_pipeline execution risk scoring storage config
+      - name: JavaScript syntax
+        run: node --check dashboard/components/chart_engine.js
+      - name: Tests and safety gates
+        run: python -m pytest
+      - name: Forbidden capability scan
+        run: python scripts/forbidden_capability_scan.py
+      - name: Migration and backup restore smoke
+        run: python scripts/certification_smoke.py

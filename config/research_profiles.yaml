@@ -1,0 +1,47 @@
+default_profile: live_public
+
+profiles:
+  fixture:
+    data_mode: fixture
+    network_enabled: false
+    preview_watermark: true
+  preview:
+    data_mode: preview
+    network_enabled: false
+    preview_watermark: true
+  live_public:
+    data_mode: live_public
+    network_enabled: true
+    preview_watermark: false
+  replay:
+    data_mode: replay
+    network_enabled: false
+    preview_watermark: false
+
+service:
+  database_path: data/traidr.duckdb
+  universe_refresh_seconds: 900
+  analysis_cycle_seconds: 60
+  heartbeat_seconds: 10
+  backup_interval_seconds: 86400
+  backup_retention_days: 14
+  log_path: data/logs/traidr-service.jsonl
+  backup_directory: data/backups
+  model_directory: data/models
+  outcome_label_seconds: 300
+  model_training_seconds: 86400
+  detailed_stream_limit: 50
+  analysis_batch_size: 2
+  watchlist:
+    - BTCUSDT
+    - HYPEUSDT
+  horizons:
+    - 5m
+    - 15m
+    - 1h
+    - 4h
+    - 1d
+  paper_simulation_enabled: false
+  automatic_paper_simulation_enabled: false
+  bind_host: 127.0.0.1
+  control_port: 8765

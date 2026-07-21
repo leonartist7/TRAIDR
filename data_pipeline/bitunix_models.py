@@ -4,19 +4,24 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+import re
 from typing import Any, Literal, TypeAlias
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 BITUNIX_ALLOWED_SYMBOLS = ("HYPEUSDT", "BTCUSDT")
-BITUNIX_ALLOWED_INTERVALS = ("1m", "5m", "15m", "1h")
+BITUNIX_ALLOWED_INTERVALS = ("1m", "5m", "15m", "1h", "4h", "1d")
 BITUNIX_ALLOWED_DEPTH_LIMITS = ("1", "5", "15", "50", "max")
 BITUNIX_INTERVAL_SECONDS = {
     "1m": 60,
     "5m": 300,
     "15m": 900,
     "1h": 3600,
+    "4h": 14_400,
+    "1d": 86_400,
 }
+
+_BITUNIX_USDT_SYMBOL = re.compile(r"^[A-Z0-9]{2,24}USDT$")
 
 
 class BitunixBaseModel(BaseModel):
@@ -112,6 +117,7 @@ class BitunixCandle(BitunixBaseModel):
 class BitunixFundingRate(BitunixBaseModel):
     symbol: str
     mark_price: Decimal = Field(validation_alias=AliasChoices("markPrice", "mark_price"))
+    index_price: Decimal = Field(validation_alias=AliasChoices("indexPrice", "index_price"))
     last_price: Decimal = Field(validation_alias=AliasChoices("lastPrice", "last_price"))
     funding_rate: Decimal = Field(validation_alias=AliasChoices("fundingRate", "funding_rate"))
     funding_interval_hours: int = Field(validation_alias=AliasChoices("fundingInterval", "funding_interval_hours"))
@@ -127,7 +133,7 @@ class BitunixFundingRate(BitunixBaseModel):
 
     @model_validator(mode="after")
     def _valid_funding(self) -> "BitunixFundingRate":
-        if self.mark_price <= 0 or self.last_price <= 0:
+        if self.mark_price <= 0 or self.index_price <= 0 or self.last_price <= 0:
             raise ValueError("funding prices must be positive")
         if self.funding_interval_hours <= 0:
             raise ValueError("funding interval must be positive")
@@ -138,6 +144,67 @@ class BitunixFundingRate(BitunixBaseModel):
     @property
     def next_funding_at(self) -> datetime:
         return datetime.fromtimestamp(self.next_funding_time_ms / 1000, tz=UTC)
+
+
+class BitunixTradingPair(BitunixBaseModel):
+    """Public instrument identity and contract limits; never an execution capability."""
+
+    symbol: str
+    base: str
+    quote: str
+    min_trade_volume: Decimal = Field(
+        validation_alias=AliasChoices("minTradeVolume", "min_trade_volume")
+    )
+    min_buy_price_offset: Decimal = Field(
+        validation_alias=AliasChoices("minBuyPriceOffset", "min_buy_price_offset")
+    )
+    max_sell_price_offset: Decimal = Field(
+        validation_alias=AliasChoices("maxSellPriceOffset", "max_sell_price_offset")
+    )
+    max_limit_order_volume: Decimal = Field(
+        validation_alias=AliasChoices("maxLimitOrderVolume", "max_limit_order_volume")
+    )
+    max_market_order_volume: Decimal = Field(
+        validation_alias=AliasChoices("maxMarketOrderVolume", "max_market_order_volume")
+    )
+    base_precision: int = Field(validation_alias=AliasChoices("basePrecision", "base_precision"))
+    quote_precision: int = Field(validation_alias=AliasChoices("quotePrecision", "quote_precision"))
+    min_leverage: int = Field(validation_alias=AliasChoices("minLeverage", "min_leverage"))
+    max_leverage: int = Field(validation_alias=AliasChoices("maxLeverage", "max_leverage"))
+    default_leverage: int = Field(
+        validation_alias=AliasChoices("defaultLeverage", "default_leverage")
+    )
+    default_margin_mode: str | int = Field(
+        validation_alias=AliasChoices("defaultMarginMode", "default_margin_mode")
+    )
+    price_protect_scope: Decimal = Field(
+        validation_alias=AliasChoices("priceProtectScope", "price_protect_scope")
+    )
+    symbol_status: str = Field(validation_alias=AliasChoices("symbolStatus", "symbol_status"))
+    is_api_supported: bool = Field(
+        validation_alias=AliasChoices("isApiSupported", "is_api_supported")
+    )
+    max_funding_rate: Decimal = Field(
+        validation_alias=AliasChoices("maxFundingRate", "max_funding_rate")
+    )
+    min_funding_rate: Decimal = Field(
+        validation_alias=AliasChoices("minFundingRate", "min_funding_rate")
+    )
+
+    @field_validator("symbol")
+    @classmethod
+    def _valid_symbol(cls, value: str) -> str:
+        return _validate_symbol(value)
+
+    @model_validator(mode="after")
+    def _valid_contract(self) -> "BitunixTradingPair":
+        if self.quote.upper() != "USDT" or self.base.upper() + self.quote.upper() != self.symbol:
+            raise ValueError("trading-pair identity is contradictory")
+        if self.min_trade_volume <= 0:
+            raise ValueError("minimum trade volume must be positive")
+        if self.min_leverage < 1 or self.max_leverage < self.min_leverage:
+            raise ValueError("leverage limits are contradictory")
+        return self
 
 
 class BitunixOrderBookLevel(BitunixBaseModel):
@@ -246,6 +313,7 @@ class BitunixCockpitSnapshot(BitunixBaseModel):
 BitunixResultValue: TypeAlias = (
     list[BitunixTicker]
     | list[BitunixCandle]
+    | list[BitunixTradingPair]
     | BitunixFundingRate
     | BitunixDepthSnapshot
     | BitunixCockpitSnapshot
@@ -286,15 +354,16 @@ def parse_order_book_levels(raw_levels: Any) -> tuple[BitunixOrderBookLevel, ...
     return tuple(BitunixOrderBookLevel.from_raw(level) for level in raw_levels)
 
 
-def validation_error_reason(error: Exception) -> str:
+def validation_error_reason(error: Exception, endpoint: str = "BITUNIX") -> str:
+    prefix = endpoint.upper().strip() or "BITUNIX"
     if isinstance(error, ValidationError):
-        return "BITUNIX_VALIDATION_FAILED"
-    return "BITUNIX_MALFORMED_DATA"
+        return f"{prefix}_VALIDATION_FAILED"
+    return f"{prefix}_MALFORMED_DATA"
 
 
 def _validate_symbol(value: str) -> str:
     normalized = value.upper().strip()
-    if normalized not in BITUNIX_ALLOWED_SYMBOLS:
+    if not _BITUNIX_USDT_SYMBOL.fullmatch(normalized):
         raise ValueError("unsupported Bitunix symbol")
     return normalized
 

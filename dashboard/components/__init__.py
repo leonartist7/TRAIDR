@@ -284,7 +284,7 @@ def render_sidebar_status(data: DashboardData) -> None:
 
     health = build_dashboard_health(data)
     st.sidebar.markdown(
-        f"""
+        """
         <div class="traidr-sidebar-brand">
           <h2>TRAIDR</h2>
           <p>Command Center</p>

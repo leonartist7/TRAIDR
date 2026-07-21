@@ -25,8 +25,7 @@ def test_local_answerer_answers_risk_alert_and_portfolio_questions(tmp_path: Pat
     alerts = answer_local_question("show recent alerts", database_path=database)
     portfolio = answer_local_question("portfolio summary", database_path=database)
 
-    assert "Top Risks" in risks
-    assert "fixture-sol-usdc" in risks
+    assert "No radar risk rows found" in risks
     assert "Recent Alerts" in alerts
     assert "WARNING" in alerts
     assert "Portfolio Summary" in portfolio

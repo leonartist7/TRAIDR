@@ -26,10 +26,19 @@ def test_bitunix_cockpit_snapshot_uses_mocked_public_transport_only() -> None:
     assert not any("KEY" in key.upper() or "SECRET" in key.upper() for key in PUBLIC_HEADERS)
 
 
+def test_bitunix_trading_pair_discovery_accepts_documented_contract() -> None:
+    result = asyncio.run(BitunixFuturesAdapter(_fixture_transport(NOW), now=NOW).fetch_trading_pairs())
+
+    assert result.ok
+    assert result.value[0].symbol == "BTCUSDT"
+    assert result.value[0].symbol_status == "OPEN"
+    assert result.value[0].can_execute_trades is False
+
+
 def test_bitunix_adapter_rejects_unsupported_symbol_or_interval() -> None:
     adapter = BitunixFuturesAdapter(_fixture_transport(NOW), now=NOW)
 
-    bad_symbol = asyncio.run(adapter.fetch_cockpit_snapshot("DOGEUSDT", "1h", "15"))
+    bad_symbol = asyncio.run(adapter.fetch_cockpit_snapshot("DOGEUSD", "1h", "15"))
     bad_interval = asyncio.run(adapter.fetch_cockpit_snapshot("BTCUSDT", "2h", "15"))
 
     assert bad_symbol.status == "INSUFFICIENT_DATA"
@@ -45,7 +54,7 @@ def test_bitunix_adapter_network_failure_returns_insufficient_data() -> None:
     result = asyncio.run(adapter.fetch_tickers(("BTCUSDT",)))
 
     assert result.status == "INSUFFICIENT_DATA"
-    assert result.reason_codes == ("BITUNIX_HTTP_FAILED",)
+    assert result.reason_codes == ("BITUNIX_TICKERS_HTTP_FAILED",)
 
 
 def test_bitunix_adapter_malformed_or_missing_data_fails_closed() -> None:
@@ -133,6 +142,33 @@ def _fixture_transport(now: datetime):
                     }
                 ],
             }
+        if path.endswith("/trading_pairs"):
+            return {
+                "code": 0,
+                "data": [
+                    {
+                        "symbol": "BTCUSDT",
+                        "base": "BTC",
+                        "quote": "USDT",
+                        "minTradeVolume": "0.0001",
+                        "minBuyPriceOffset": "-0.95",
+                        "maxSellPriceOffset": "100",
+                        "maxLimitOrderVolume": "100000",
+                        "maxMarketOrderVolume": "50000",
+                        "basePrecision": 4,
+                        "quotePrecision": 1,
+                        "minLeverage": 1,
+                        "maxLeverage": 125,
+                        "defaultLeverage": 20,
+                        "defaultMarginMode": 1,
+                        "priceProtectScope": "0.02",
+                        "symbolStatus": "OPEN",
+                        "isApiSupported": True,
+                        "maxFundingRate": "0.3",
+                        "minFundingRate": "-0.3",
+                    }
+                ],
+            }
         if path.endswith("/kline"):
             return {
                 "code": 0,
@@ -156,6 +192,7 @@ def _fixture_transport(now: datetime):
                 "data": {
                     "symbol": symbol,
                     "markPrice": "68.8",
+                    "indexPrice": "68.7",
                     "lastPrice": "68.9",
                     "fundingRate": "0.0001",
                     "fundingInterval": "8",

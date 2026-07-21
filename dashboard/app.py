@@ -14,16 +14,13 @@ if str(ROOT) not in sys.path:
 from dashboard.components import (  # noqa: E402
     inject_command_center_styles,
     render_command_center_header,
-    render_command_center,
     render_database_summary,
     render_daily_mission,
-    render_command_strip,
     render_safety_status,
     render_sidebar_status,
-    render_setup_instructions,
 )
 from dashboard import bitunix_cockpit  # noqa: E402
-from dashboard.pages import alerts, market_radar, portfolio, reports, token_detail, watchlist  # noqa: E402
+from dashboard.pages import alerts, market_radar, portfolio, reports, system_health, token_detail, watchlist  # noqa: E402
 from dashboard.queries import configured_database_path, load_dashboard_data  # noqa: E402
 
 
@@ -51,6 +48,7 @@ def main() -> None:
             "Alerts",
             "Reports",
             "Safety Status",
+            "System Health",
         ]
     )
     with tabs[0]:
@@ -59,14 +57,24 @@ def main() -> None:
         with lower_left:
             render_daily_mission(data)
         with lower_right:
-            render_command_strip(database_input, key_prefix="cockpit")
+            st.info(
+                "The cockpit is read-only. Use System Health for the loopback-only "
+                "refresh and paper-simulation controls."
+            )
     with tabs[1]:
         render_daily_mission(data)
         render_safety_status(data)
         render_database_summary(data)
-        render_command_center(database_input, key_prefix="operations")
         if not data.database_exists:
-            render_setup_instructions(str(data.database_path))
+            st.info(
+                "Start the single-writer service with `python -m cli.main service run` "
+                "to initialize validated live research data."
+            )
+        else:
+            st.info(
+                "All production state changes go through the single-writer service. "
+                "Direct dashboard database actions are disabled."
+            )
     with tabs[2]:
         market_radar.render(data)
     with tabs[3]:
@@ -81,6 +89,8 @@ def main() -> None:
         reports.render(data)
     with tabs[8]:
         render_safety_status(data)
+    with tabs[9]:
+        system_health.render(data)
 
 
 if __name__ == "__main__":

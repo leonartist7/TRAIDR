@@ -5,10 +5,32 @@ policy:
   require_provenance_metadata: true
 
 sources:
+  bitunix_public:
+    enabled: true
+    role: futures_authority
+    cost_class: free
+    order_execution_allowed: false
+  coingecko_keyless:
+    enabled: true
+    role: exact_mapped_spot_metadata
+    cost_class: free_throttled
+    order_execution_allowed: false
   dexscreener:
-    enabled: false
+    enabled: true
     role: optional_market_data
     cost_class: free
+    order_execution_allowed: false
+  public_rss:
+    enabled: true
+    allowlist:
+      - https://www.coindesk.com/arc/outboundfeeds/rss/
+      - https://decrypt.co/feed
+      - https://cointelegraph.com/rss
+    role: context_only
+    order_execution_allowed: false
+  solana_public_rpc:
+    enabled: true
+    role: exact_mapped_onchain_safety
     order_execution_allowed: false
   goat_sdk:
     enabled: false
@@ -20,4 +42,3 @@ sources:
     role: local_simulation_validation
     cost_class: local
     order_execution_allowed: false
-

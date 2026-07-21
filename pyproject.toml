@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "traidr"
-version = "0.1.0"
+version = "0.2.0"
 description = "Simulation-first micro-cap crypto intelligence and paper-trading research engine."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
@@ -16,7 +16,10 @@ dependencies = [
     "pydantic>=2.7,<3.0",
     "PyYAML>=6.0,<7.0",
     "networkx>=3.3,<4.0",
-    "streamlit>=1.35,<2.0",
+    "streamlit>=1.37,<2.0",
+    "websockets>=16.1,<17.0",
+    "numpy>=2.0,<3.0",
+    "scikit-learn>=1.9,<2.0",
 ]
 
 [project.scripts]
@@ -25,12 +28,77 @@ traidr = "cli.main:main"
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0,<9.0",
+    "pytest-playwright>=0.7,<1.0",
+    "playwright>=1.55,<2.0",
+    "ruff>=0.12,<1.0",
+    "mypy>=1.16,<2.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+exclude = ["graphify-out", "data", ".venv"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B"]
+ignore = ["E501", "F401", "B018", "B905"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106", "S311", "S603", "S608"]
+"scripts/*.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_configs = true
+exclude = "^(tests|graphify-out)/"
+
+[[tool.mypy.overrides]]
+module = [
+    "duckdb.*",
+    "networkx.*",
+    "numpy.*",
+    "sklearn.*",
+    "streamlit.*",
+    "yaml.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "agents.*",
+    "ask.*",
+    "dashboard.*",
+    "operator.*",
+    "portfolio.*",
+    "radar.*",
+    "reports.*",
+    "scheduler.research_scheduler",
+    "scheduler.tasks",
+    "token_detail.*",
+    "watchlist.*",
+]
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "utils.toon",
+    "intelligence.news_sources",
+    "intelligence.rss_adapter",
+    "intelligence.macro_sources",
+    "data_pipeline.bitunix_models",
+    "data_pipeline.dexscreener_adapter",
+    "data_pipeline.market_scan",
+    "data_pipeline.scan_models",
+    "data_pipeline.validation",
+]
+ignore_errors = true
 
 [tool.setuptools]
 packages = [

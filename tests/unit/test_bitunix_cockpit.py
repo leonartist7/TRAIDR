@@ -27,7 +27,8 @@ def test_bitunix_cockpit_chart_payload_is_non_executing() -> None:
     assert len(payload["candles"]) == 4
     assert payload["overlays"]
     assert payload["support_resistance"]
-    assert payload["risk_reward_boxes"]
+    assert payload["risk_reward_boxes"] == []
+    assert payload["metrics"]["probability_state"] == "UNCALIBRATED"
     assert "order" not in str(payload).lower()
     assert "withdraw" not in str(payload).lower()
 
@@ -123,6 +124,7 @@ def _snapshot() -> BitunixCockpitSnapshot:
         funding_rate=BitunixFundingRate(
             symbol="BTCUSDT",
             markPrice="103",
+            indexPrice="102.9",
             lastPrice="103",
             fundingRate="0.0001",
             fundingInterval=8,

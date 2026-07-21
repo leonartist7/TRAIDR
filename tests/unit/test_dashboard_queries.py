@@ -72,7 +72,7 @@ def test_dashboard_queries_load_command_center_sections(tmp_path: Path) -> None:
     data = load_dashboard_data(database)
 
     assert data.database_exists is True
-    assert data.market_radar[0]["can_execute_trades"] is False
+    assert data.market_radar == []
     assert data.scan_evidence[0]["source_name"] == "market_scan:fixture"
     assert data.alerts[0]["subject_id"] == "fixture-sol-usdc"
     assert data.portfolio_entries[0]["symbol"] == "SOL"
