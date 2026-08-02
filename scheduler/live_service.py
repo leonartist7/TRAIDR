@@ -366,7 +366,7 @@ class LiveResearchService:
         if trend is not None:
             fields["price_structure"] = max(-1.0, min(1.0, float(trend) / 1.5))
             sources["price_structure"] = "bitunix:multi_horizon"
-        volume = sum((float(candle.quote_volume) for candle in candles[-24:]), 0.0)
+        volume = sum((float(candle.quote_volume) for candle in candles[-96:]), 0.0)
         if volume > 0:
             fields["volume_24h_usd"] = volume
             sources["volume_24h_usd"] = "bitunix:candles"
