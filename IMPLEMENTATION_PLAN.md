@@ -288,11 +288,10 @@ Completed:
 
 Remaining integration work:
 
-- Wire provider credentials through an operator-owned runtime secret mechanism without persisting or logging them.
-- Feed stored Bitunix trade-flow, BTC/ETH correlation, news/catalyst and paper risk/reward evidence into ScannerInput during the service analysis cycle.
-- Persist scanner score breakdowns in a dedicated read-only research table and render them in the dashboard.
-- Add live service and browser tests after the provider-backed dashboard path is connected.
-- Keep CoinMarketCap event-calendar data explicitly unavailable unless an official API endpoint is adopted; do not scrape it.
+- Add focused service/schema migration tests and browser coverage for the new scanner persistence and dashboard tab.
+- Provision provider credentials through an operator-owned secret mechanism and validate the optional authenticated paths in a controlled environment.
+- Add independently verified BTC/ETH correlation and directional news/catalyst adapters before those factors can contribute to a complete score.
+- Keep CoinMarketCap event-calendar and technical-indicator data explicitly unavailable unless official documented API endpoints are adopted; do not scrape or fabricate them.
 
 Acceptance criteria:
 
