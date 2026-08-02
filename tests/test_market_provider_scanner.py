@@ -164,6 +164,19 @@ def test_coinmarketcap_transport_failure_returns_insufficient_data() -> None:
     assert result.can_execute_trades is False
 
 
+def test_coinmarketcap_unsupported_indicator_and_event_routes_fail_closed() -> None:
+    provider = CoinMarketCapProvider()
+    indicators = asyncio.run(provider.fetch_technical_indicators("BTC"))
+    events = asyncio.run(provider.fetch_events())
+
+    assert indicators.status is ProviderHealthStatus.INSUFFICIENT_DATA
+    assert "CMC_TECHNICAL_INDICATORS_API_UNAVAILABLE" in indicators.reason_codes
+    assert events.status is ProviderHealthStatus.INSUFFICIENT_DATA
+    assert "CMC_EVENTS_API_UNAVAILABLE" in events.reason_codes
+    assert indicators.can_execute_trades is False
+    assert events.can_execute_trades is False
+
+
 def test_scanner_exposes_all_factor_contributions_and_stays_non_executing() -> None:
     fields = {
         "price_structure": 0.5,
