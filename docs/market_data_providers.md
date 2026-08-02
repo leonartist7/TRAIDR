@@ -9,16 +9,18 @@ TRAIDR uses one read-only provider boundary so public sources can be combined wi
 | Bitunix public REST/WebSocket | Candles, tickers, depth, trades, funding and market events | None for public data | Primary venue-specific futures feed |
 | Bitunix private boundary | Future balance, positions, leverage and TP/SL visibility | Deferred; no client implemented | Disabled account-read boundary only |
 | CoinGlass V4 | Funding, open interest, OI changes, liquidations and long/short ratios | API key required by current API | Cross-exchange derivatives context |
-| CoinGecko | Current and historical market data, metadata and market/TVL context | Keyless public API by default | Cross-market and identity-bound context |
-| CoinMarketCap | Quotes, rankings, historical/technical families, trends and content | Keyless routes where supported; full catalog requires API key | Market ranking and narrative context |
+| CoinGecko | Current and historical market data and metadata; existing CoinGecko/DEX evidence covers liquidity where available | Keyless public API by default | Cross-market and identity-bound context |
+| CoinMarketCap | Quotes, rankings, trends and content; technical indicators use TRAIDR deterministic features | Keyless routes where supported; full catalog requires API key | Market ranking and narrative context |
 
-CoinMarketCap's current public API does not expose a documented event-calendar endpoint in the provider contract. TRAIDR returns CMC_EVENTS_API_UNAVAILABLE rather than scraping or fabricating token events.
+CoinMarketCap's current public API does not expose documented event-calendar or technical-indicator endpoints in the provider contract. TRAIDR returns CMC_EVENTS_API_UNAVAILABLE rather than scraping or fabricating token events.
 
 ## Code boundaries
 
 - data_pipeline/provider_contracts.py defines the provider protocol, normalized observations, health, cache, timestamp normalization, source conflict records and deterministic merging.
 - data_pipeline/market_data_providers.py implements the Bitunix facade, CoinGlass V4, CoinGecko keyless current/history, CoinMarketCap quotes/rankings/trending/content, and the disabled Bitunix private boundary.
 - data_pipeline/provider_factory.py builds the read-only set without persisting credentials.
+- scheduler/live_service.py enriches evidence with optional CoinGlass/CoinMarketCap context; keys are read from process environment only.
+- storage/schema.py and storage/market_repository.py persist schema-v8 scanner breakdowns; dashboard/pages/live_scanner.py renders them read-only.
 - scoring/live_scanner.py combines providers and returns a factor-by-factor research score.
 - Existing data_pipeline/bitunix_websocket.py, data_pipeline/microstructure.py, data_pipeline/provider_runtime.py, and scheduler/live_service.py remain the source of truth for streaming trades, order-flow aggregation, throttling, circuits, ingestion gaps and DuckDB writes.
 
