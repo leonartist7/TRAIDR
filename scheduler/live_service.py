@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -25,6 +26,7 @@ from data_pipeline.candle_pipeline import OneMinuteCandlePipeline, aggregate_can
 from data_pipeline.microstructure import MicrostructureAccumulator
 from data_pipeline.provider_runtime import ProviderCircuitBreaker, TokenBucket
 from data_pipeline.coingecko_adapter import CoinGeckoAdapter, default_coingecko_transport
+from data_pipeline.market_data_providers import CoinGlassProvider, CoinMarketCapProvider
 from execution.paper_futures import PaperFuturesSimulator
 from execution.portfolio_stress import assess_portfolio_stress
 from intelligence.evidence_engine import (
@@ -84,6 +86,9 @@ class LiveResearchService:
         self.rest_bucket = TokenBucket(rate_per_second=8.0, capacity=8)
         self.coingecko_bucket = TokenBucket(rate_per_second=0.4, capacity=1)
         self.coingecko = CoinGeckoAdapter(default_coingecko_transport)
+        # Optional keys are read from the process environment only; they are never persisted or logged.
+        self.coinglass = CoinGlassProvider(api_key=os.environ.get("COINGLASS_API_KEY"))
+        self.coinmarketcap = CoinMarketCapProvider(api_key=os.environ.get("COINMARKETCAP_API_KEY"))
         self.rss = RSSNewsAdapter(default_rss_transport)
         self._news_cache: dict[str, tuple[dict[str, Any], ...]] = {}
         self.logger: logging.Logger = logging.getLogger("traidr.live_service")
@@ -199,6 +204,9 @@ class LiveResearchService:
                 source_identifier=symbol,
             )
             cross_market = await self._cross_market(identity.canonical_asset_id if identity else None, mark_price)
+            external_context = await self._external_market_context(symbol, mark_price)
+            if external_context:
+                cross_market = {**(cross_market or {}), **external_context}
             if mark_price is not None and instrument_id in self.paper_simulator.positions:
                 marked = self.paper_simulator.process_price(instrument_id, mark_price)
                 if marked.ok and marked.value is not None:
@@ -553,6 +561,47 @@ class LiveResearchService:
                         existing = self._news_cache.get(str(asset_id), ())
                         self._news_cache[str(asset_id)] = tuple((item, *existing))[:50]
             await self._wait(900)
+
+    async def _external_market_context(
+        self,
+        symbol: str,
+        futures_price: Decimal | None,
+    ) -> dict[str, Any] | None:
+        """Collect optional read-only derivatives and market context for evidence."""
+
+        context: dict[str, Any] = {}
+        coinglass = await self.coinglass.fetch(symbol)
+        if coinglass.ok and coinglass.value is not None:
+            for key in (
+                "funding_rate",
+                "open_interest",
+                "oi_change_pct",
+                "liquidation_pressure",
+                "long_short_ratio",
+            ):
+                value = coinglass.value.fields.get(key)
+                if value is not None:
+                    context[f"coinglass_{key}"] = value
+            context["coinglass_observed_at"] = coinglass.value.observed_at.isoformat()
+        elif coinglass.reason_codes:
+            context["coinglass_reason_codes"] = list(coinglass.reason_codes)
+
+        coinmarketcap = await self.coinmarketcap.fetch(symbol)
+        if coinmarketcap.ok and coinmarketcap.value is not None:
+            for key in ("price_usd", "market_cap_usd", "volume_24h_usd", "percent_change_24h"):
+                value = coinmarketcap.value.fields.get(key)
+                if value is not None:
+                    context[f"coinmarketcap_{key}"] = value
+            cmc_price = coinmarketcap.value.fields.get("price_usd")
+            if futures_price is not None and isinstance(cmc_price, (int, float)) and cmc_price > 0:
+                context["coinmarketcap_divergence_bps"] = float(
+                    (futures_price - Decimal(str(cmc_price))) / Decimal(str(cmc_price)) * Decimal("10000")
+                )
+            context["coinmarketcap_observed_at"] = coinmarketcap.value.observed_at.isoformat()
+        elif coinmarketcap.reason_codes:
+            context["coinmarketcap_reason_codes"] = list(coinmarketcap.reason_codes)
+
+        return context or None
 
     async def _cross_market(
         self,
