@@ -17,6 +17,7 @@ from execution.paper_futures import (
     PaperPortfolioSnapshot,
     PaperPosition,
 )
+from scoring.live_scanner import ScannerScore
 from intelligence.production_models import (
     CanonicalAssetIdentity,
     CertificationReport,
@@ -370,6 +371,45 @@ class MarketRepository:
                 _safe_json(bundle.hard_vetoes),
                 _safe_json(bundle.reason_codes),
                 _safe_json(bundle.model_dump(mode="json")),
+            ],
+        )
+        return cursor.fetchone() is not None
+
+    def record_scanner_score(self, score: ScannerScore) -> bool:
+        """Persist a deterministic factor breakdown for the read-only dashboard."""
+
+        observed_at = score.observed_at or datetime.now(tz=UTC)
+        score_id = f"scanner:{score.instrument_id}:{observed_at.isoformat()}"
+        cursor = self.connection.execute(
+            """
+            INSERT INTO market_scanner_scores VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)
+            ON CONFLICT (score_id) DO UPDATE SET
+                recorded_at = excluded.recorded_at,
+                status = excluded.status,
+                direction = excluded.direction,
+                score = excluded.score,
+                long_score = excluded.long_score,
+                short_score = excluded.short_score,
+                risk_score = excluded.risk_score,
+                conflicts_json = excluded.conflicts_json,
+                reason_codes_json = excluded.reason_codes_json,
+                factor_breakdown_json = excluded.factor_breakdown_json
+            RETURNING score_id
+            """,
+            [
+                score_id,
+                score.instrument_id,
+                observed_at,
+                datetime.now(tz=UTC),
+                score.status,
+                score.direction.value,
+                score.score,
+                score.long_score,
+                score.short_score,
+                score.risk_score,
+                _safe_json(score.conflicts),
+                _safe_json(score.reason_codes),
+                _safe_json(score.factor_breakdown()),
             ],
         )
         return cursor.fetchone() is not None
