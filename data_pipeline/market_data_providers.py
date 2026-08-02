@@ -794,6 +794,22 @@ class CoinMarketCapProvider(_JsonProvider):
             reason_codes=("CMC_CONTENT_OK", *reasons) if values else ("CMC_CONTENT_EMPTY",),
         )
 
+    async def fetch_technical_indicators(
+        self,
+        symbol: str,
+        *,
+        now: datetime | None = None,
+    ) -> ProviderResult[Mapping[str, Any]]:
+        """Keep indicator provenance explicit when CMC does not expose a documented route."""
+
+        del symbol
+        return ProviderResult.insufficient(
+            self.name,
+            self._last_health,
+            "CMC_TECHNICAL_INDICATORS_API_UNAVAILABLE",
+            "USE_TRAIDR_DETERMINISTIC_TECHNICALS",
+        )
+
     async def fetch_events(self, *, now: datetime | None = None) -> ProviderResult[tuple[Mapping[str, Any], ...]]:
         """The public CMC API has no documented event-calendar endpoint; stay explicit."""
 
