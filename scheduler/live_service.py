@@ -45,6 +45,7 @@ from intelligence.production_models import (
 )
 from risk.production_gate import assess_paper_signal
 from scoring.signal_engine import score_directional_setup
+from scoring.live_scanner import ScannerInput, score_scanner_input
 from scoring.model_lifecycle import train_eligible_buckets
 from scoring.outcome_labeler import label_expired_signals
 from scheduler.control_api import LocalControlServer
@@ -82,6 +83,7 @@ class LiveResearchService:
         self.identity_registry = AssetIdentityRegistry.reviewed_defaults()
         self.candle_pipeline = OneMinuteCandlePipeline()
         self.microstructure = MicrostructureAccumulator()
+        self._latest_trade_delta: dict[str, float] = {}
         self.rest_circuit = ProviderCircuitBreaker("bitunix_public_rest", "market")
         self.rest_bucket = TokenBucket(rate_per_second=8.0, capacity=8)
         self.coingecko_bucket = TokenBucket(rate_per_second=0.4, capacity=1)
@@ -269,6 +271,17 @@ class LiveResearchService:
                         }
                     )
                 repository.record_feature(feature)
+                if horizon == "15m":
+                    scanner_score = self._build_scanner_score(
+                        symbol=symbol,
+                        feature=feature,
+                        candles=candles,
+                        depth_imbalance=depth_imbalance,
+                        funding=funding,
+                        external_context=cross_market,
+                        canonical_asset_id=identity.canonical_asset_id if identity else None,
+                    )
+                    repository.record_scanner_score(scanner_score)
                 bundle = build_evidence_bundle(
                     feature,
                     canonical_asset_id=identity.canonical_asset_id if identity else None,
@@ -333,6 +346,95 @@ class LiveResearchService:
                 self._record_rest_health(repository, symbol, MarketChannel.KLINE, "HEALTHY", ("BITUNIX_REST_ANALYSIS_OK",))
         repository.record_portfolio(self.paper_simulator.snapshot())
 
+    def _build_scanner_score(
+        self,
+        *,
+        symbol: str,
+        feature: Any,
+        candles: tuple[BitunixCandle, ...] | list[BitunixCandle],
+        depth_imbalance: float | None,
+        funding: BitunixFundingRate | None,
+        external_context: dict[str, Any] | None,
+        canonical_asset_id: str | None,
+    ) -> Any:
+        """Build a factor-auditable research score from available live evidence."""
+
+        fields: dict[str, float] = {}
+        sources: dict[str, str] = {}
+        technical = feature.features
+        trend = technical.get("trend_strength_pct")
+        if trend is not None:
+            fields["price_structure"] = max(-1.0, min(1.0, float(trend) / 1.5))
+            sources["price_structure"] = "bitunix:multi_horizon"
+        volume = sum((float(candle.quote_volume) for candle in candles[-24:]), 0.0)
+        if volume > 0:
+            fields["volume_24h_usd"] = volume
+            sources["volume_24h_usd"] = "bitunix:candles"
+        if depth_imbalance is not None:
+            fields["order_book_imbalance"] = float(depth_imbalance)
+            sources["order_book_imbalance"] = "bitunix:depth"
+        trade_delta = self._latest_trade_delta.get(feature.instrument_id)
+        if trade_delta is not None:
+            fields["trade_delta"] = trade_delta
+            sources["trade_delta"] = "bitunix:trades"
+        if funding is not None:
+            fields["funding_rate"] = float(funding.funding_rate)
+            sources["funding_rate"] = "bitunix:funding"
+
+        context = external_context or {}
+        for field_name, context_keys, source in (
+            ("funding_rate", ("coinglass_funding_rate",), "coinglass"),
+            ("oi_change_pct", ("coinglass_oi_change_pct",), "coinglass"),
+            ("liquidation_pressure", ("coinglass_liquidation_pressure",), "coinglass"),
+            ("btc_eth_correlation", ("btc_eth_correlation",), "correlation:btc_eth"),
+        ):
+            if field_name in fields:
+                continue
+            value = next((context.get(key) for key in context_keys if isinstance(context.get(key), (int, float))), None)
+            if value is not None:
+                fields[field_name] = float(value)
+                sources[field_name] = source
+
+        news_rows = self._news_cache.get(canonical_asset_id or "", ())
+        catalyst = next(
+            (
+                float(item["catalyst_score"])
+                for item in news_rows
+                if isinstance(item.get("catalyst_score"), (int, float))
+            ),
+            None,
+        )
+        if catalyst is not None:
+            fields["news_catalyst"] = catalyst
+            sources["news_catalyst"] = "rss:news_evidence"
+
+        last_price = technical.get("last_price")
+        support = technical.get("support")
+        resistance = technical.get("resistance")
+        if last_price is not None and support is not None and resistance is not None:
+            downside = max(float(last_price) - float(support), 0.0)
+            upside = max(float(resistance) - float(last_price), 0.0)
+            if downside > 0:
+                fields["risk_reward"] = upside / downside
+                sources["risk_reward"] = "bitunix:structure"
+
+        conflicts: list[str] = []
+        for key in ("divergence_bps", "coinmarketcap_divergence_bps"):
+            value = context.get(key)
+            if isinstance(value, (int, float)) and abs(float(value)) > 100.0:
+                conflicts.append(f"{key.upper()}_OVER_100_BPS")
+        return score_scanner_input(
+            ScannerInput(
+                instrument_id=f"bitunix:{symbol}",
+                fields=fields,
+                field_sources=sources,
+                observed_at=feature.observed_at,
+                conflicts=tuple(conflicts),
+                critical_conflict=bool(conflicts),
+                volume_reference=None,
+            )
+        )
+
     def _paper_return_histories(self, repository: MarketRepository) -> dict[str, tuple[float, ...]]:
         histories: dict[str, tuple[float, ...]] = {}
         for position in self.paper_simulator.open_positions():
@@ -369,6 +471,7 @@ class LiveResearchService:
                 )
         metric = self.microstructure.ingest(event)
         if metric is not None:
+            self._latest_trade_delta[metric.instrument_id] = metric.trade_delta
             repository.record_microstructure(
                 metric_id=metric.metric_id,
                 instrument_id=metric.instrument_id,
