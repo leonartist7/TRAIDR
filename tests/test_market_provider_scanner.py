@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+
+import duckdb
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -20,6 +22,8 @@ from data_pipeline.provider_contracts import (
     normalize_timestamp,
 )
 from scoring.live_scanner import ScannerInput, score_scanner_input
+from storage.market_repository import MarketRepository
+from storage.schema import initialize_schema
 from intelligence.production_models import SignalDirection
 
 
@@ -198,3 +202,35 @@ def test_scanner_defaults_to_insufficient_data_when_factors_are_missing() -> Non
     assert score.direction is SignalDirection.NO_TRADE
     assert score.status == "INSUFFICIENT_DATA"
     assert "SCANNER_REQUIRED_FACTORS_MISSING" in score.reason_codes
+    assert len(score.factor_breakdown()) == 10
+    assert any("SCANNER_MISSING_VOLUME" in row["reason_codes"] for row in score.factor_breakdown())
+
+
+def test_scanner_breakdown_persists_as_read_only_research_state() -> None:
+    fields = {
+        "price_structure": 0.5,
+        "volume_24h_usd": 1000.0,
+        "order_book_imbalance": 0.5,
+        "trade_delta": 0.4,
+        "funding_rate": -0.0005,
+        "oi_change_pct": 5.0,
+        "liquidation_pressure": -0.4,
+        "btc_eth_correlation": 0.5,
+        "news_catalyst": 0.5,
+        "risk_reward": 3.0,
+    }
+    score = score_scanner_input(ScannerInput(instrument_id="bitunix:BTCUSDT", fields=fields, observed_at=NOW))
+    connection = duckdb.connect(":memory:")
+    try:
+        initialize_schema(connection)
+        repository = MarketRepository(connection)
+        assert repository.record_scanner_score(score)
+        row = connection.execute(
+            "SELECT direction, can_execute_trades, factor_breakdown_json FROM market_scanner_scores"
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "LONG"
+        assert row[1] is False
+        assert "price_structure" in row[2]
+    finally:
+        connection.close()
