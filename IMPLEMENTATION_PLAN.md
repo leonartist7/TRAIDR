@@ -312,3 +312,22 @@ Provider-specific release notes:
 - CoinMarketCap supports selected keyless routes under its public-api base path; full rankings, trends and content may require an API key and plan.
 - CoinGecko uses exact reviewed IDs, never symbol-only joins.
 - Bitunix private account visibility remains deferred and disabled.
+
+
+### 8.1 Integration completion and next gates
+
+Completed in this phase:
+
+- Optional CoinGlass and CoinMarketCap context is called by the single-writer service using process-environment keys only; keys are not written to DuckDB or logs.
+- Bitunix trade-flow is retained from the public WebSocket microstructure path and passed into scanner evidence when available.
+- Scanner results are persisted in schema v8 ('market_scanner_scores') with raw values, normalized values, weights, source labels, explanations, conflicts and reason codes.
+- The dashboard has a read-only Live Scanner tab. It renders all ten factors, including explicit unavailable-factor rows when the scanner fails closed.
+- Risk/reward is derived from the observed support/resistance structure. BTC/ETH correlation and directional news catalyst remain absent until independently verified adapters provide them; their absence therefore keeps the scanner at INSUFFICIENT_DATA.
+
+Next gates:
+
+- Add focused service/schema migration tests and browser coverage for the Live Scanner tab.
+- Provision provider credentials through an operator-owned secret mechanism and verify health/rate-limit behavior in a controlled environment.
+- Add independently verified BTC/ETH correlation and directional catalyst evidence before allowing those factors to contribute.
+- Preserve the rule that no complete score is displayed unless all ten factors are present and no critical conflict exists.
+- Keep CoinMarketCap events explicitly unavailable unless an official documented endpoint is adopted.
