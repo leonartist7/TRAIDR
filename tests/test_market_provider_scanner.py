@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from data_pipeline.market_data_providers import (
+    BitunixPrivateReadOnlyBoundary,
     CoinGlassProvider,
     CoinGeckoProvider,
     CoinMarketCapProvider,
@@ -78,6 +79,20 @@ def test_source_merge_prefers_bitunix_and_surfaces_critical_conflict() -> None:
     assert bundle.field_sources["price_usd"] == "bitunix_public"
     assert bundle.has_critical_conflict
     assert "CRITICAL_SOURCE_CONFLICT" in bundle.reason_codes
+
+
+def test_bitunix_private_boundary_has_no_account_action_path() -> None:
+    boundary = BitunixPrivateReadOnlyBoundary()
+    results = [
+        asyncio.run(boundary.fetch_account_balance()),
+        asyncio.run(boundary.fetch_positions()),
+        asyncio.run(boundary.fetch_leverage()),
+        asyncio.run(boundary.fetch_protection_orders()),
+    ]
+
+    assert all(result.status is ProviderHealthStatus.INSUFFICIENT_DATA for result in results)
+    assert all(result.can_execute_trades is False for result in results)
+    assert all("NO_TRADING_OR_WITHDRAWAL_CAPABILITY" in result.reason_codes for result in results)
 
 
 def test_coinglass_requires_explicit_api_key() -> None:
