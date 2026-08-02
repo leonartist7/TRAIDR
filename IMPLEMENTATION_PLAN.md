@@ -268,3 +268,47 @@ Deferred until separately justified and still safety-gated:
 - Operational observability improvements that do not create execution authority.
 
 No feature should be added merely to increase trade frequency or target a daily profit amount. The platform’s objective is reproducible, explainable, fail-closed research.
+
+
+## 8. External provider and live scanner phase
+
+This phase is implemented behind the read-only provider boundary.
+
+Completed:
+
+- Unified provider contracts for observations, health, caching, timestamp normalization, source precedence and conflict warnings.
+- Bitunix public REST facade over the existing candles, tickers, depth and funding adapter; existing WebSocket trades and microstructure remain the streaming path.
+- CoinGlass V4 optional derivatives provider for funding, open interest, OI changes, liquidations and long/short ratios.
+- CoinGecko keyless current, historical and exact-ID metadata provider.
+- CoinMarketCap keyless/authenticated quote and ranking provider with optional trending/content methods.
+- Explicit disabled Bitunix private read-only boundary with no private endpoint or signing implementation.
+- Deterministic live scanner with ten weighted factors and exact factor-level contributions.
+- Provider health, retry-after handling, token buckets, circuits, UTC timestamp checks, in-memory TTL caches and source-conflict vetoes.
+- Focused tests for provider parsing, missing keys, transport failure, timestamp rejection, source conflicts and scanner fail-closed behavior.
+
+Remaining integration work:
+
+- Wire provider credentials through an operator-owned runtime secret mechanism without persisting or logging them.
+- Feed stored Bitunix trade-flow, BTC/ETH correlation, news/catalyst and paper risk/reward evidence into ScannerInput during the service analysis cycle.
+- Persist scanner score breakdowns in a dedicated read-only research table and render them in the dashboard.
+- Add live service and browser tests after the provider-backed dashboard path is connected.
+- Keep CoinMarketCap event-calendar data explicitly unavailable unless an official API endpoint is adopted; do not scrape it.
+
+Acceptance criteria:
+
+- Every provider implements the same async read-only interface and can be replaced by an injected transport or MCP bridge.
+- Provider errors, missing keys, rate limits, stale timestamps and source conflicts produce explicit health/reason codes.
+- A scanner score is emitted only when all ten required factors are present and critical conflicts are absent.
+- Missing factors produce INSUFFICIENT_DATA and NO_TRADE.
+- Complete but weak evidence produces NO_TRADE.
+- Source conflicts produce DEGRADED and NO_TRADE.
+- Every displayed contribution includes raw value, normalized value, weight, source and explanation.
+- All provider and scanner outputs retain can_execute_trades: false.
+- No new method can place, cancel, reverse, leverage, or withdraw an order.
+
+Provider-specific release notes:
+
+- CoinGlass V4 currently requires the CG-API-KEY header; absent credentials must remain an insufficient-data state.
+- CoinMarketCap supports selected keyless routes under its public-api base path; full rankings, trends and content may require an API key and plan.
+- CoinGecko uses exact reviewed IDs, never symbol-only joins.
+- Bitunix private account visibility remains deferred and disabled.
