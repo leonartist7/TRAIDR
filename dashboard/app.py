@@ -20,7 +20,7 @@ from dashboard.components import (  # noqa: E402
     render_sidebar_status,
 )
 from dashboard import bitunix_cockpit  # noqa: E402
-from dashboard.pages import alerts, market_radar, portfolio, reports, system_health, token_detail, watchlist  # noqa: E402
+from dashboard.pages import alerts, live_scanner, market_radar, portfolio, reports, system_health, token_detail, watchlist  # noqa: E402
 from dashboard.queries import configured_database_path, load_dashboard_data  # noqa: E402
 
 
@@ -40,6 +40,7 @@ def main() -> None:
     tabs = st.tabs(
         [
             "Cockpit",
+            "Live Scanner",
             "Operations",
             "Radar",
             "Token Detail",
@@ -62,6 +63,8 @@ def main() -> None:
                 "refresh and paper-simulation controls."
             )
     with tabs[1]:
+        live_scanner.render(data)
+    with tabs[2]:
         render_daily_mission(data)
         render_safety_status(data)
         render_database_summary(data)
@@ -75,21 +78,21 @@ def main() -> None:
                 "All production state changes go through the single-writer service. "
                 "Direct dashboard database actions are disabled."
             )
-    with tabs[2]:
-        market_radar.render(data)
     with tabs[3]:
-        token_detail.render(data)
+        market_radar.render(data)
     with tabs[4]:
-        watchlist.render(data)
+        token_detail.render(data)
     with tabs[5]:
-        portfolio.render(data)
+        watchlist.render(data)
     with tabs[6]:
-        alerts.render(data)
+        portfolio.render(data)
     with tabs[7]:
-        reports.render(data)
+        alerts.render(data)
     with tabs[8]:
-        render_safety_status(data)
+        reports.render(data)
     with tabs[9]:
+        render_safety_status(data)
+    with tabs[10]:
         system_health.render(data)
 
 
