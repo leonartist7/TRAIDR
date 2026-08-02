@@ -4,6 +4,7 @@ import asyncio
 
 import duckdb
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from typing import Any
 
 from data_pipeline.market_data_providers import (
@@ -23,6 +24,7 @@ from data_pipeline.provider_contracts import (
 )
 from scoring.live_scanner import ScannerInput, score_scanner_input
 from storage.market_repository import MarketRepository
+from scheduler.live_service import LiveResearchService
 from storage.schema import initialize_schema
 from intelligence.production_models import SignalDirection
 
@@ -217,6 +219,41 @@ def test_scanner_defaults_to_insufficient_data_when_factors_are_missing() -> Non
     assert "SCANNER_REQUIRED_FACTORS_MISSING" in score.reason_codes
     assert len(score.factor_breakdown()) == 10
     assert any("SCANNER_MISSING_VOLUME" in row["reason_codes"] for row in score.factor_breakdown())
+
+
+def test_service_scanner_wiring_stays_fail_closed_without_correlation_or_catalyst() -> None:
+    service = object.__new__(LiveResearchService)
+    service._latest_trade_delta = {"bitunix:BTCUSDT": 0.25}
+    service._news_cache = {}
+    feature = SimpleNamespace(
+        instrument_id="bitunix:BTCUSDT",
+        observed_at=NOW,
+        features={
+            "trend_strength_pct": 0.5,
+            "last_price": 100.0,
+            "support": 95.0,
+            "resistance": 110.0,
+        },
+    )
+    score = service._build_scanner_score(
+        symbol="BTCUSDT",
+        feature=feature,
+        candles=[],
+        depth_imbalance=0.2,
+        funding=None,
+        external_context={
+            "coinglass_funding_rate": -0.0001,
+            "coinglass_oi_change_pct": 4.0,
+            "coinglass_liquidation_pressure": -0.2,
+        },
+        canonical_asset_id=None,
+    )
+
+    assert score.direction is SignalDirection.NO_TRADE
+    assert score.status == "INSUFFICIENT_DATA"
+    reasons = {reason for row in score.factor_breakdown() for reason in row["reason_codes"]}
+    assert "SCANNER_MISSING_BTC_ETH_CORRELATION" in reasons
+    assert "SCANNER_MISSING_NEWS_CATALYST" in reasons
 
 
 def test_scanner_breakdown_persists_as_read_only_research_state() -> None:
