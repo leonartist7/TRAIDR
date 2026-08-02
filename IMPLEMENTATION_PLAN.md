@@ -242,6 +242,7 @@ Before tagging:
 - [ ] Ruff, mypy, compilation and JavaScript checks pass.
 - [ ] Forbidden-capability scan passes.
 - [ ] Migration/backup-restore smoke passes.
+- [ ] Schema v8 scanner-table migration and read-only dashboard smoke pass.
 - [ ] 72-hour shadow report is `PASSED`.
 - [ ] Coverage, freshness and gap thresholds are met.
 - [ ] Backup was restored successfully during the shadow window.
