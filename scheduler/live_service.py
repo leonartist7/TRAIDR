@@ -38,6 +38,7 @@ from intelligence.rss_adapter import RSSNewsAdapter, default_rss_transport
 from intelligence.production_models import (
     DataHealth,
     DataMode,
+    FeatureSnapshot,
     IngestionGap,
     IngestionGapStatus,
     MarketChannel,
@@ -45,7 +46,7 @@ from intelligence.production_models import (
 )
 from risk.production_gate import assess_paper_signal
 from scoring.signal_engine import score_directional_setup
-from scoring.live_scanner import ScannerInput, score_scanner_input
+from scoring.live_scanner import ScannerInput, ScannerScore, score_scanner_input
 from scoring.model_lifecycle import train_eligible_buckets
 from scoring.outcome_labeler import label_expired_signals
 from scheduler.control_api import LocalControlServer
@@ -350,13 +351,13 @@ class LiveResearchService:
         self,
         *,
         symbol: str,
-        feature: Any,
+        feature: FeatureSnapshot,
         candles: tuple[BitunixCandle, ...] | list[BitunixCandle],
         depth_imbalance: float | None,
         funding: BitunixFundingRate | None,
         external_context: dict[str, Any] | None,
         canonical_asset_id: str | None,
-    ) -> Any:
+    ) -> ScannerScore:
         """Build a factor-auditable research score from available live evidence."""
 
         fields: dict[str, float] = {}
