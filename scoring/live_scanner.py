@@ -8,15 +8,13 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from math import log
 from statistics import median
 from typing import Any
 
 from data_pipeline.provider_contracts import (
-    MarketDataBundle,
-    ProviderHealthStatus,
     ReadOnlyMarketProvider,
     merge_provider_observations,
 )
@@ -38,15 +36,15 @@ FACTOR_WEIGHTS: Mapping[str, float] = {
 
 FACTOR_FIELD_NAMES: Mapping[str, str] = {
     "price_structure": "price_structure",
-    "volume": "volume_score",
+    "volume": "volume_24h_usd",
     "order_book_imbalance": "order_book_imbalance",
     "recent_trades": "trade_delta",
-    "funding": "funding_signal",
-    "oi_change": "oi_change_signal",
-    "liquidation_pressure": "liquidation_signal",
+    "funding": "funding_rate",
+    "oi_change": "oi_change_pct",
+    "liquidation_pressure": "liquidation_pressure",
     "btc_eth_correlation": "btc_eth_correlation",
     "news_catalyst": "news_catalyst",
-    "risk_reward": "risk_reward_signal",
+    "risk_reward": "risk_reward",
 }
 
 
@@ -100,7 +98,7 @@ class ScannerScore:
 class ScannerInput:
     instrument_id: str
     fields: Mapping[str, float]
-    field_sources: Mapping[str, str] = None  # type: ignore[assignment]
+    field_sources: Mapping[str, str] = field(default_factory=dict)
     observed_at: datetime | None = None
     conflicts: tuple[str, ...] = ()
     critical_conflict: bool = False
@@ -116,7 +114,7 @@ def score_scanner_input(
     """Score complete evidence or fail closed with explicit missing-field reasons."""
 
     fields = dict(scanner_input.fields)
-    sources = dict(scanner_input.field_sources or {})
+    sources = dict(scanner_input.field_sources)
     missing = tuple(
         name for name in FACTOR_WEIGHTS
         if FACTOR_FIELD_NAMES[name] not in fields
@@ -184,7 +182,6 @@ def score_scanner_input(
                 short_contribution=-long_contribution,
                 explanation=_explain_factor(name, raw, normalized),
                 source=sources.get(field_name),
-                reason_codes=(),
             )
         )
 
@@ -308,7 +305,7 @@ def _risk_score(fields: Mapping[str, float], conflicts: Sequence[str]) -> float:
     risk += abs(float(fields.get("funding_rate", 0.0))) * 5_000.0
     risk += abs(float(fields.get("liquidation_pressure", 0.0))) * 20.0
     risk += 20.0 if conflicts else 0.0
-    return _clamp(risk)
+    return _clamp(risk, 0.0, 100.0)
 
 
 def _explain_factor(name: str, raw: float, normalized: float) -> str:
