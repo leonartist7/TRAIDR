@@ -721,7 +721,7 @@ class CoinMarketCapProvider(_JsonProvider):
             "/v3/cryptocurrency/listings/latest",
             params={"start": "1", "limit": str(limit), "convert": "USD"},
         )
-        rows = response.payload.get("data") if isinstance(response.payload, Mapping) else None
+        rows = (response.payload.get("data") if response is not None and isinstance(response.payload, Mapping) else None)
         if not isinstance(rows, list):
             return ProviderResult.insufficient(self.name, self._last_health, *reasons, "CMC_RANKINGS_MISSING")
         observations = tuple(
@@ -752,7 +752,7 @@ class CoinMarketCapProvider(_JsonProvider):
             "/v1/cryptocurrency/trending/latest",
             params={"start": "1", "limit": str(max(1, min(limit, 1000))), "convert": "USD"},
         )
-        rows = response.payload.get("data") if isinstance(response.payload, Mapping) else None
+        rows = (response.payload.get("data") if response is not None and isinstance(response.payload, Mapping) else None)
         if not isinstance(rows, list):
             return ProviderResult.insufficient(self.name, self._last_health, *reasons, "CMC_TRENDING_MISSING")
         observations = tuple(
@@ -782,7 +782,7 @@ class CoinMarketCapProvider(_JsonProvider):
         if symbol:
             params["symbol"] = symbol.upper()
         response, reasons = await self._request("/v1/content/latest", params=params)
-        rows = response.payload.get("data") if isinstance(response.payload, Mapping) else None
+        rows = (response.payload.get("data") if response is not None and isinstance(response.payload, Mapping) else None)
         if not isinstance(rows, list):
             return ProviderResult.insufficient(self.name, self._last_health, *reasons, "CMC_CONTENT_MISSING")
         values = tuple(row for row in rows if isinstance(row, Mapping))
