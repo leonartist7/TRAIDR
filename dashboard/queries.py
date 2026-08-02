@@ -56,6 +56,7 @@ class DashboardData:
     model_artifacts: list[dict[str, Any]] = field(default_factory=list)
     certification_runs: list[dict[str, Any]] = field(default_factory=list)
     decision_audit: list[dict[str, Any]] = field(default_factory=list)
+    scanner_scores: list[dict[str, Any]] = field(default_factory=list)
 
 
 def configured_database_path() -> Path:
@@ -424,6 +425,17 @@ def load_dashboard_data(
                 SELECT bundle_id, instrument_id, canonical_asset_id, observed_at,
                        data_coverage, hard_vetoes_json, reason_codes_json, bundle_json
                 FROM evidence_bundles ORDER BY generated_at DESC LIMIT ?
+                """, limit,
+            ),
+            scanner_scores=_query_if_table(
+                connection, tables, "market_scanner_scores",
+                """
+                SELECT score_id, instrument_id, observed_at, recorded_at, status, direction,
+                       score, long_score, short_score, risk_score, conflicts_json,
+                       reason_codes_json, factor_breakdown_json
+                FROM market_scanner_scores
+                ORDER BY observed_at DESC, recorded_at DESC
+                LIMIT ?
                 """, limit,
             ),
             market_microstructure=_query_if_table(
