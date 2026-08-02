@@ -129,7 +129,7 @@ def score_scanner_input(
             long_score=None,
             short_score=None,
             risk_score=None,
-            factors=(),
+            factors=_unavailable_factors(missing, sources),
             conflicts=conflicts,
             reason_codes=(
                 "SCANNER_REQUIRED_FACTORS_MISSING",
@@ -146,7 +146,7 @@ def score_scanner_input(
             long_score=None,
             short_score=None,
             risk_score=None,
-            factors=(),
+            factors=_unavailable_factors((), sources, reason="Critical source conflict; scoring halted."),
             conflicts=conflicts,
             reason_codes=("SCANNER_CRITICAL_SOURCE_CONFLICT",),
             observed_at=scanner_input.observed_at,
@@ -284,6 +284,37 @@ class LiveMarketScanner:
                 )
             )
         return tuple(scores)
+
+
+def _unavailable_factors(
+    missing: Sequence[str],
+    sources: Mapping[str, str],
+    *,
+    reason: str = "Evidence missing; factor excluded and scanner halted.",
+) -> tuple[ScannerFactor, ...]:
+    missing_fields = {FACTOR_FIELD_NAMES[name] for name in missing}
+    return tuple(
+        ScannerFactor(
+            name=name,
+            weight=weight,
+            raw_value=0.0,
+            normalized_value=0.0,
+            long_contribution=0.0,
+            short_contribution=0.0,
+            explanation=(
+                reason
+                if FACTOR_FIELD_NAMES[name] not in missing_fields
+                else f"Missing evidence for {FACTOR_FIELD_NAMES[name]}; factor excluded and scanner halted."
+            ),
+            source=sources.get(FACTOR_FIELD_NAMES[name]),
+            reason_codes=(
+                ()
+                if FACTOR_FIELD_NAMES[name] not in missing_fields
+                else (f"SCANNER_MISSING_{name.upper()}",)
+            ),
+        )
+        for name, weight in FACTOR_WEIGHTS.items()
+    )
 
 
 def _volume_signal(
