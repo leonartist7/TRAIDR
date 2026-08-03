@@ -109,6 +109,12 @@ Architectural rules:
 - The single-writer service owns DuckDB mutation; the dashboard opens read-only state.
 - Paper simulation is a separate bounded consumer and cannot create live execution authority.
 
+Detailed visual-platform workstream:
+
+- `docs/VISUAL_PLATFORM_EXECUTION_PLAN.md` is the implementation-ready specification for the local SaaS-style browser application and evidence-grounded Ask TRAIDR chat.
+- The visual workstream may start after Phase 1 passes, but it cannot bypass any verification, certification, or release gate in this plan.
+- The existing Streamlit dashboard remains the verified fallback until the new application reaches tested feature parity.
+
 ## 5. Delivery roadmap
 
 | Phase | Priority | Estimated effort | Depends on | Exit gate |
