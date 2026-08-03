@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import cast
 
 from data_pipeline.market_data_providers import (
     BitunixPrivateReadOnlyBoundary,
@@ -27,12 +28,13 @@ def build_read_only_market_providers(
     intentionally not returned because it is not a market-data provider.
     """
 
-    return (
+    providers = (
         BitunixPublicProvider(),
         CoinGlassProvider(api_key=coinglass_api_key),
         CoinGeckoProvider(coin_ids=coingecko_coin_ids),
         CoinMarketCapProvider(api_key=coinmarketcap_api_key),
     )
+    return cast(tuple[ReadOnlyMarketProvider, ...], providers)
 
 
 def build_disabled_private_boundary() -> BitunixPrivateReadOnlyBoundary:

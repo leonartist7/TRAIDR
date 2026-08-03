@@ -106,7 +106,7 @@ class _JsonProvider:
                     response = self.transport(url, params, request_headers)
                     if hasattr(response, "__await__"):
                         response = await cast(Awaitable[ProviderHttpResponse], response)
-                    result = cast(ProviderHttpResponse, response)
+                    result = response
                 else:
                     async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
                         raw = await client.get(url, params=params, headers=request_headers)
@@ -725,11 +725,12 @@ class CoinMarketCapProvider(_JsonProvider):
         if not isinstance(rows, list):
             return ProviderResult.insufficient(self.name, self._last_health, *reasons, "CMC_RANKINGS_MISSING")
         observations = tuple(
-            self._observation_from_record(row, now=now)
+            item
             for row in rows
             if isinstance(row, Mapping)
+            for item in (self._observation_from_record(row, now=now),)
+            if item is not None
         )
-        observations = tuple(item for item in observations if item is not None)
         if not observations:
             return ProviderResult.insufficient(self.name, self._last_health, "CMC_RANKINGS_EMPTY")
         return ProviderResult(
@@ -756,11 +757,12 @@ class CoinMarketCapProvider(_JsonProvider):
         if not isinstance(rows, list):
             return ProviderResult.insufficient(self.name, self._last_health, *reasons, "CMC_TRENDING_MISSING")
         observations = tuple(
-            self._observation_from_record(row, now=now)
+            item
             for row in rows
             if isinstance(row, Mapping)
+            for item in (self._observation_from_record(row, now=now),)
+            if item is not None
         )
-        observations = tuple(item for item in observations if item is not None)
         return ProviderResult(
             provider=self.name,
             status=ProviderHealthStatus.HEALTHY if observations else ProviderHealthStatus.INSUFFICIENT_DATA,
