@@ -357,6 +357,7 @@ class LiveResearchService:
         funding: BitunixFundingRate | None,
         external_context: dict[str, Any] | None,
         canonical_asset_id: str | None,
+        reference_at: datetime | None = None,
     ) -> ScannerScore:
         """Build a factor-auditable research score from available live evidence."""
 
@@ -430,6 +431,7 @@ class LiveResearchService:
                 fields=fields,
                 field_sources=sources,
                 observed_at=feature.observed_at,
+                reference_at=reference_at or datetime.now(tz=UTC),
                 conflicts=tuple(conflicts),
                 critical_conflict=bool(conflicts),
                 volume_reference=None,

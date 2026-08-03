@@ -130,6 +130,9 @@ class SourceConflict:
     reason_code: str = "SOURCE_CONFLICT"
 
 
+DEFAULT_MAX_OBSERVATION_AGE = timedelta(minutes=5)
+
+
 @dataclass(frozen=True)
 class MarketDataBundle:
     instrument_id: str
@@ -141,6 +144,9 @@ class MarketDataBundle:
     health: tuple[ProviderHealth, ...]
     status: ProviderHealthStatus
     reason_codes: tuple[str, ...]
+    observation_ages_seconds: Mapping[str, float] = field(default_factory=dict)
+    stale_observation_ages_seconds: Mapping[str, float] = field(default_factory=dict)
+    maximum_observation_age_seconds: float = DEFAULT_MAX_OBSERVATION_AGE.total_seconds()
     can_execute_trades: bool = False
 
     @property
@@ -252,14 +258,46 @@ def merge_provider_observations(
     source_preference: Sequence[str] = ("bitunix_public", "coinglass", "coingecko", "coinmarketcap"),
     conflict_thresholds: Mapping[str, float] = DEFAULT_CONFLICT_THRESHOLDS,
     critical_fields: frozenset[str] = DEFAULT_CRITICAL_FIELDS,
+    maximum_observation_age: timedelta = DEFAULT_MAX_OBSERVATION_AGE,
 ) -> MarketDataBundle:
     """Merge healthy observations without hiding disagreements between providers."""
 
-    observations = tuple(result.value for result in results if result.ok and result.value is not None)
+    if maximum_observation_age <= timedelta(0):
+        raise ValueError("maximum observation age must be positive")
+    reference = (now or datetime.now(tz=UTC)).astimezone(UTC)
+    accepted_observations: list[ProviderObservation] = []
+    observation_ages: dict[str, float] = {}
+    stale_observation_ages: dict[str, float] = {}
     health = tuple(result.health for result in results)
     reasons: list[str] = []
     for result in results:
         reasons.extend(result.reason_codes)
+        if not result.ok or result.value is None:
+            continue
+        observed_at = _as_utc_datetime(result.value.observed_at)
+        age = reference - observed_at
+        age_seconds = age.total_seconds()
+        if age > maximum_observation_age:
+            stale_observation_ages[result.provider] = age_seconds
+            reasons.extend(
+                (
+                    "STALE_PROVIDER_OBSERVATION",
+                    f"STALE_PROVIDER_{result.provider.upper().replace('-', '_')}"
+                )
+            )
+            continue
+        if age < timedelta(0):
+            stale_observation_ages[result.provider] = age_seconds
+            reasons.extend(
+                (
+                    "FUTURE_PROVIDER_OBSERVATION",
+                    f"FUTURE_PROVIDER_{result.provider.upper().replace('-', '_')}"
+                )
+            )
+            continue
+        accepted_observations.append(result.value)
+        observation_ages[result.provider] = age_seconds
+    observations = tuple(accepted_observations)
     if not observations:
         return MarketDataBundle(
             instrument_id=instrument_id,
@@ -270,7 +308,12 @@ def merge_provider_observations(
             conflicts=(),
             health=health,
             status=ProviderHealthStatus.INSUFFICIENT_DATA,
-            reason_codes=tuple(dict.fromkeys((*reasons, "NO_HEALTHY_PROVIDER_OBSERVATION"))),
+            reason_codes=tuple(
+                dict.fromkeys((*reasons, "NO_FRESH_PROVIDER_OBSERVATION", "NO_HEALTHY_PROVIDER_OBSERVATION"))
+            ),
+            observation_ages_seconds=observation_ages,
+            stale_observation_ages_seconds=stale_observation_ages,
+            maximum_observation_age_seconds=maximum_observation_age.total_seconds(),
         )
 
     values_by_field: dict[str, list[tuple[str, float]]] = {}
@@ -311,14 +354,14 @@ def merge_provider_observations(
         fields[field_name] = chosen_value
         field_sources[field_name] = chosen_source
 
-    latest = max((observation.observed_at for observation in observations), default=None)
+    latest = max((_as_utc_datetime(observation.observed_at) for observation in observations), default=None)
     if conflicts:
         reasons.append("SOURCE_CONFLICT_WARNING")
     if any(conflict.critical for conflict in conflicts):
         reasons.append("CRITICAL_SOURCE_CONFLICT")
     status = (
         ProviderHealthStatus.DEGRADED
-        if conflicts
+        if conflicts or stale_observation_ages
         else ProviderHealthStatus.HEALTHY
     )
     return MarketDataBundle(
@@ -331,4 +374,13 @@ def merge_provider_observations(
         health=health,
         status=status,
         reason_codes=tuple(dict.fromkeys(reasons or ["PROVIDERS_MERGED"])),
+        observation_ages_seconds=observation_ages,
+        stale_observation_ages_seconds=stale_observation_ages,
+        maximum_observation_age_seconds=maximum_observation_age.total_seconds(),
     )
+
+
+def _as_utc_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

@@ -9,12 +9,13 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from math import log
 from statistics import median
 from typing import Any
 
 from data_pipeline.provider_contracts import (
+    DEFAULT_MAX_OBSERVATION_AGE,
     ReadOnlyMarketProvider,
     merge_provider_observations,
 )
@@ -100,6 +101,8 @@ class ScannerInput:
     fields: Mapping[str, float]
     field_sources: Mapping[str, str] = field(default_factory=dict)
     observed_at: datetime | None = None
+    reference_at: datetime | None = None
+    maximum_observation_age: timedelta = DEFAULT_MAX_OBSERVATION_AGE
     conflicts: tuple[str, ...] = ()
     critical_conflict: bool = False
     volume_reference: float | None = None
@@ -115,6 +118,25 @@ def score_scanner_input(
 
     fields = dict(scanner_input.fields)
     sources = dict(scanner_input.field_sources)
+    if _has_stale_observation(scanner_input):
+        return ScannerScore(
+            instrument_id=scanner_input.instrument_id,
+            status="INSUFFICIENT_DATA",
+            direction=SignalDirection.NO_TRADE,
+            score=None,
+            long_score=None,
+            short_score=None,
+            risk_score=None,
+            factors=_unavailable_factors(
+                (),
+                sources,
+                fields=fields,
+                reason="Observation is stale or from the future; scoring halted.",
+            ),
+            conflicts=tuple(scanner_input.conflicts),
+            reason_codes=("SCANNER_STALE_OBSERVATION",),
+            observed_at=scanner_input.observed_at,
+        )
     missing = tuple(
         name for name in FACTOR_WEIGHTS
         if FACTOR_FIELD_NAMES[name] not in fields
@@ -129,7 +151,7 @@ def score_scanner_input(
             long_score=None,
             short_score=None,
             risk_score=None,
-            factors=_unavailable_factors(missing, sources),
+            factors=_unavailable_factors(missing, sources, fields=fields),
             conflicts=conflicts,
             reason_codes=(
                 "SCANNER_REQUIRED_FACTORS_MISSING",
@@ -146,7 +168,12 @@ def score_scanner_input(
             long_score=None,
             short_score=None,
             risk_score=None,
-            factors=_unavailable_factors((), sources, reason="Critical source conflict; scoring halted."),
+            factors=_unavailable_factors(
+                (),
+                sources,
+                fields=fields,
+                reason="Critical source conflict; scoring halted.",
+            ),
             conflicts=conflicts,
             reason_codes=("SCANNER_CRITICAL_SOURCE_CONFLICT",),
             observed_at=scanner_input.observed_at,
@@ -277,6 +304,7 @@ class LiveMarketScanner:
                         fields=fields,
                         field_sources=bundle.field_sources,
                         observed_at=bundle.observed_at,
+                        reference_at=reference,
                         conflicts=tuple(conflict.field for conflict in bundle.conflicts),
                         critical_conflict=bundle.has_critical_conflict,
                         volume_reference=volume_reference,
@@ -290,6 +318,7 @@ def _unavailable_factors(
     missing: Sequence[str],
     sources: Mapping[str, str],
     *,
+    fields: Mapping[str, float] | None = None,
     reason: str = "Evidence missing; factor excluded and scanner halted.",
 ) -> tuple[ScannerFactor, ...]:
     missing_fields = {FACTOR_FIELD_NAMES[name] for name in missing}
@@ -297,7 +326,11 @@ def _unavailable_factors(
         ScannerFactor(
             name=name,
             weight=weight,
-            raw_value=0.0,
+            raw_value=(
+                float(fields[FACTOR_FIELD_NAMES[name]])
+                if fields is not None and FACTOR_FIELD_NAMES[name] in fields
+                else 0.0
+            ),
             normalized_value=0.0,
             long_contribution=0.0,
             short_contribution=0.0,
@@ -315,6 +348,23 @@ def _unavailable_factors(
         )
         for name, weight in FACTOR_WEIGHTS.items()
     )
+
+
+def _has_stale_observation(scanner_input: ScannerInput) -> bool:
+    if scanner_input.observed_at is None or scanner_input.reference_at is None:
+        return False
+    if scanner_input.maximum_observation_age <= timedelta(0):
+        raise ValueError("maximum observation age must be positive")
+    observed_at = _as_utc_datetime(scanner_input.observed_at)
+    reference_at = _as_utc_datetime(scanner_input.reference_at)
+    age = reference_at - observed_at
+    return age > scanner_input.maximum_observation_age or age < timedelta(0)
+
+
+def _as_utc_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def _volume_signal(

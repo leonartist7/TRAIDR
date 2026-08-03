@@ -143,16 +143,17 @@ class _JsonProvider:
                     rate_limited=False,
                     reason_codes=("PROVIDER_HTTP_OK",),
                 )
-                return result, ("PROVIDER_HTTP_OK",)
+                return result, tuple(dict.fromkeys((*reasons, "PROVIDER_HTTP_OK")))
 
             if result.status_code == 429:
+                retry_after_seconds = parse_retry_after(_header_value(result.headers, "Retry-After"))
                 self.circuit.failure(
-                    retry_after_seconds=parse_retry_after(result.headers.get("Retry-After")),
+                    retry_after_seconds=retry_after_seconds,
                     now=now,
                 )
                 reasons.append("PROVIDER_RATE_LIMITED")
                 if attempt + 1 < self.maximum_attempts:
-                    retry_after = parse_retry_after(result.headers.get("Retry-After")) or self.circuit.backoff_seconds(attempt)
+                    retry_after = retry_after_seconds or self.circuit.backoff_seconds(attempt)
                     await self.sleep(min(retry_after, 5.0))
                     continue
                 self._update_health(
@@ -1034,3 +1035,11 @@ def _clock_skew_ms(response: ProviderHttpResponse, reference: datetime) -> float
     if timestamp is None:
         return None
     return (timestamp - reference).total_seconds() * 1000.0
+
+
+def _header_value(headers: Mapping[str, str], name: str) -> str | None:
+    target = name.casefold()
+    for key, value in headers.items():
+        if str(key).casefold() == target:
+            return value
+    return None

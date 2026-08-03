@@ -46,11 +46,16 @@ def _health(provider: str) -> ProviderHealth:
     )
 
 
-def _observation(provider: str, price: float) -> ProviderResult[ProviderObservation]:
+def _observation(
+    provider: str,
+    price: float,
+    *,
+    observed_at: datetime = NOW,
+) -> ProviderResult[ProviderObservation]:
     value = ProviderObservation(
         provider=provider,
         instrument_id="bitunix:BTCUSDT",
-        observed_at=NOW,
+        observed_at=observed_at,
         received_at=NOW,
         fields={"price_usd": price, "funding_rate": 0.0002},
         capabilities=(ProviderCapability.MARKET_DATA,),
@@ -73,12 +78,65 @@ def test_source_merge_prefers_bitunix_and_surfaces_critical_conflict() -> None:
     bundle = merge_provider_observations(
         "bitunix:BTCUSDT",
         (_observation("coingecko", 100.0), _observation("bitunix_public", 104.0)),
+        now=NOW,
     )
 
     assert bundle.fields["price_usd"] == 104.0
     assert bundle.field_sources["price_usd"] == "bitunix_public"
     assert bundle.has_critical_conflict
     assert "CRITICAL_SOURCE_CONFLICT" in bundle.reason_codes
+
+
+def test_source_merge_rejects_stale_observations_before_selection() -> None:
+    at_boundary = merge_provider_observations(
+        "bitunix:BTCUSDT",
+        (_observation("bitunix_public", 100.0, observed_at=NOW - timedelta(minutes=5)),),
+        now=NOW,
+    )
+    stale = merge_provider_observations(
+        "bitunix:BTCUSDT",
+        (_observation("bitunix_public", 100.0, observed_at=NOW - timedelta(minutes=5, seconds=1)),),
+        now=NOW,
+    )
+
+    assert at_boundary.status is ProviderHealthStatus.HEALTHY
+    assert at_boundary.fields["price_usd"] == 100.0
+    assert stale.status is ProviderHealthStatus.INSUFFICIENT_DATA
+    assert stale.fields == {}
+    assert "STALE_PROVIDER_OBSERVATION" in stale.reason_codes
+    assert "NO_FRESH_PROVIDER_OBSERVATION" in stale.reason_codes
+
+
+def test_provider_honors_case_insensitive_retry_after_header() -> None:
+    calls = 0
+    delays: list[float] = []
+
+    async def transport(
+        url: str,
+        params: dict[str, str],
+        headers: dict[str, str],
+    ) -> ProviderHttpResponse:
+        del url, params, headers
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return ProviderHttpResponse(429, {}, headers={"retry-after": "4"}, received_at=NOW)
+        return ProviderHttpResponse(200, {}, received_at=NOW)
+
+    async def sleep(delay: float) -> None:
+        delays.append(delay)
+
+    provider = CoinMarketCapProvider(transport=transport)
+    provider.sleep = sleep
+    response, reasons = asyncio.run(
+        provider._request("/test", params={})
+    )
+
+    assert response is not None
+    assert response.status_code == 200
+    assert calls == 2
+    assert delays == [4.0]
+    assert "PROVIDER_RATE_LIMITED" in reasons
 
 
 def test_bitunix_private_boundary_has_no_account_action_path() -> None:
@@ -234,6 +292,40 @@ def test_scanner_defaults_to_insufficient_data_when_factors_are_missing() -> Non
     assert "SCANNER_REQUIRED_FACTORS_MISSING" in score.reason_codes
     assert len(score.factor_breakdown()) == 10
     assert any("SCANNER_MISSING_VOLUME" in row["reason_codes"] for row in score.factor_breakdown())
+    price_row = next(row for row in score.factor_breakdown() if row["factor"] == "price_structure")
+    assert price_row["raw_value"] == 0.5
+    assert price_row["long_contribution"] == 0.0
+
+
+def test_scanner_rejects_stale_observation_when_reference_is_supplied() -> None:
+    fields = {
+        "price_structure": 0.5,
+        "volume_24h_usd": 1000.0,
+        "order_book_imbalance": 0.5,
+        "trade_delta": 0.4,
+        "funding_rate": -0.0005,
+        "oi_change_pct": 5.0,
+        "liquidation_pressure": -0.4,
+        "btc_eth_correlation": 0.5,
+        "news_catalyst": 0.5,
+        "risk_reward": 3.0,
+    }
+    score = score_scanner_input(
+        ScannerInput(
+            instrument_id="bitunix:BTCUSDT",
+            fields=fields,
+            observed_at=NOW - timedelta(hours=6),
+            reference_at=NOW,
+            volume_reference=1000.0,
+        )
+    )
+
+    assert score.direction is SignalDirection.NO_TRADE
+    assert score.status == "INSUFFICIENT_DATA"
+    assert "SCANNER_STALE_OBSERVATION" in score.reason_codes
+    price_row = next(row for row in score.factor_breakdown() if row["factor"] == "price_structure")
+    assert price_row["raw_value"] == 0.5
+    assert price_row["long_contribution"] == 0.0
 
 
 def test_service_scanner_wiring_stays_fail_closed_without_correlation_or_catalyst() -> None:
@@ -262,6 +354,7 @@ def test_service_scanner_wiring_stays_fail_closed_without_correlation_or_catalys
             "coinglass_liquidation_pressure": -0.2,
         },
         canonical_asset_id=None,
+        reference_at=NOW,
     )
 
     assert score.direction is SignalDirection.NO_TRADE
