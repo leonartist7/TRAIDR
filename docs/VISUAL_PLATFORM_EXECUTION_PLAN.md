@@ -8,7 +8,9 @@ Planning baseline: `d6caeda`
 
 Target: a polished local SaaS-style visual platform with live public-market research, explainable scanner results, paper-futures views, operational health, and an evidence-grounded research chat.
 
-This is a planning-only handoff. It does not authorize live trading, private exchange endpoints, wallet access, signing, transfers, withdrawals, custody, or secret exposure.
+Implementation status (2026-08-04): V0, V1, and V2 pass locally. V3-V6 remain pending. TRAIDR is still a production candidate and has not passed the 72-hour certification gate.
+
+This plan does not authorize live trading, private exchange endpoints, wallet access, signing, transfers, withdrawals, custody, or secret exposure.
 
 ## 1. Executive decision
 
@@ -52,13 +54,13 @@ Reuse these implemented components:
 | Local Ask TRAIDR | `ask/local_answerer.py`, `ask/intents.py`, `ask/query_parser.py` | Reuse as deterministic chat fallback and expand with typed evidence |
 | Safety and certification | `SAFETY_RULES.md`, `docs/PRODUCTION_CERTIFICATION.md` | Treat as hard release gates |
 
-What is missing:
+What remains:
 
-- No standalone React/TypeScript frontend exists.
+- The React/TypeScript V2 shell now provides the Command Center, Scanner, responsive navigation, explicit preview state, and a guarded read-only API client.
 - Ask TRAIDR is CLI-only and is not connected to a visual chat surface.
-- Dashboard navigation is eleven Streamlit tabs rather than a coherent SaaS application shell.
-- Live updates are page reruns rather than typed API subscriptions.
-- The browser does not yet have stable JSON contracts or citation-ready research responses.
+- The React shell does not yet have market workspace, paper portfolio, operations, audit, or research-chat parity with Streamlit.
+- Bounded live polling, chart integration, and citation-ready research responses remain V3-V5 work.
+- Streamlit remains the verified fallback until parity and release gates pass.
 
 ## 4. Safety invariants
 

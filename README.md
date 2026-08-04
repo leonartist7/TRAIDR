@@ -109,6 +109,26 @@ python -m streamlit run dashboard/app.py -- --database data/traidr.duckdb
 
 The production service supports public data only. It contains no authenticated exchange client and no route from a signal, model, dashboard, or paper fill to a real order. See `docs/PRODUCTION_RESEARCH_SERVICE.md` for the Windows runbook, safe rollout, recovery, and release gates.
 
+### Visual platform preview
+
+The V2 React interface is read-only and loopback-only. Run these in separate terminals after installing the locked Python and frontend dependencies:
+
+```bash
+python -m cli.main service run --database data/traidr.duckdb
+python -c "from web_api import run_api; run_api(r'data/traidr.duckdb')"
+cd web
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. If that port is already in use, run `npm run dev -- --port 5187` and open `http://127.0.0.1:5187` instead. If the API is unavailable or evidence is stale, missing, or contradictory, the interface visibly falls back to non-directional preview data and `NO_TRADE` / `INSUFFICIENT_DATA` states.
+
+The existing Streamlit dashboard remains the verified fallback:
+
+```bash
+python -m streamlit run dashboard/app.py -- --database data/traidr.duckdb
+```
+
 Current verification and open certification gates are tracked in `docs/PRODUCTION_READINESS_STATUS.md`.
 Start the 72-hour collection-only gate with `traidr certify shadow`. The command records deterministic
 fault-injection results but does not pretend that elapsed time or live coverage has passed.
