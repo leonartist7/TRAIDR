@@ -58,6 +58,7 @@ class DashboardData:
     certification_runs: list[dict[str, Any]] = field(default_factory=list)
     decision_audit: list[dict[str, Any]] = field(default_factory=list)
     scanner_scores: list[dict[str, Any]] = field(default_factory=list)
+    shadow_evidence: list[dict[str, Any]] = field(default_factory=list)
 
 
 def configured_database_path() -> Path:
@@ -435,6 +436,17 @@ def load_dashboard_data(
                        score, long_score, short_score, risk_score, conflicts_json,
                        reason_codes_json, factor_breakdown_json
                 FROM market_scanner_scores
+                ORDER BY observed_at DESC, recorded_at DESC
+                LIMIT ?
+                """, limit,
+            ),
+            shadow_evidence=_query_if_table(
+                connection, tables, "shadow_market_evidence",
+                """
+                SELECT shadow_evidence_id, instrument_id, provider, observed_at, received_at,
+                       recorded_at, fields_json, metadata_json, reason_codes_json,
+                       assessment_json, shadow_only, scoring_weight, can_execute_trades
+                FROM shadow_market_evidence
                 ORDER BY observed_at DESC, recorded_at DESC
                 LIMIT ?
                 """, limit,

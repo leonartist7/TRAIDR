@@ -11,6 +11,7 @@ from data_pipeline.market_data_providers import (
     CoinGeckoProvider,
     CoinGlassProvider,
     CoinMarketCapProvider,
+    CryptoPanicProvider,
 )
 from data_pipeline.provider_contracts import ReadOnlyMarketProvider
 
@@ -20,6 +21,7 @@ def build_read_only_market_providers(
     coingecko_coin_ids: Mapping[str, str],
     coinglass_api_key: str | None = None,
     coinmarketcap_api_key: str | None = None,
+    cryptopanic_api_key: str | None = None,
 ) -> tuple[ReadOnlyMarketProvider, ...]:
     """Build providers with credentials kept in memory and execution absent.
 
@@ -33,6 +35,7 @@ def build_read_only_market_providers(
         CoinGlassProvider(api_key=coinglass_api_key),
         CoinGeckoProvider(coin_ids=coingecko_coin_ids),
         CoinMarketCapProvider(api_key=coinmarketcap_api_key),
+        CryptoPanicProvider(api_key=cryptopanic_api_key),
     )
     return cast(tuple[ReadOnlyMarketProvider, ...], providers)
 

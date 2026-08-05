@@ -19,10 +19,141 @@ class ProviderCapability(StrEnum):
     OPEN_INTEREST = "open_interest"
     LIQUIDATIONS = "liquidations"
     LONG_SHORT = "long_short"
+    TAKER_FLOW = "taker_flow"
+    CROWDING = "crowding"
+    MARKET_REGIME = "market_regime"
+    ONCHAIN_FLOW = "onchain_flow"
     MARKET_DATA = "market_data"
     METADATA = "metadata"
     NEWS = "news"
     EVENTS = "events"
+
+
+@dataclass(frozen=True)
+class ProviderAccessPolicy:
+    """Non-secret operating metadata exposed by local health views."""
+
+    provider: str
+    role: str
+    auth_mode: str
+    cost_tier: str
+    quota_model: str
+    freshness_target_seconds: float
+    licensing: str
+    shadow_only: bool
+    research_only: bool
+    can_execute_trades: bool = False
+
+
+PROVIDER_ACCESS_POLICIES: Mapping[str, ProviderAccessPolicy] = {
+    "bitunix_public": ProviderAccessPolicy(
+        provider="bitunix_public",
+        role="primary_venue_market_data",
+        auth_mode="public_keyless",
+        cost_tier="free",
+        quota_model="exchange_public_limits",
+        freshness_target_seconds=5.0,
+        licensing="personal_local_research",
+        shadow_only=False,
+        research_only=False,
+    ),
+    "coinglass": ProviderAccessPolicy(
+        provider="coinglass",
+        role="cross_exchange_derivatives_context",
+        auth_mode="server_environment_key",
+        cost_tier="metered",
+        quota_model="provider_plan",
+        freshness_target_seconds=120.0,
+        licensing="personal_local_research",
+        shadow_only=True,
+        research_only=False,
+    ),
+    "coingecko": ProviderAccessPolicy(
+        provider="coingecko",
+        role="cross_market_identity_and_reference",
+        auth_mode="public_or_server_environment_key",
+        cost_tier="free_or_metered",
+        quota_model="provider_plan",
+        freshness_target_seconds=300.0,
+        licensing="personal_local_research",
+        shadow_only=True,
+        research_only=False,
+    ),
+    "coinmarketcap": ProviderAccessPolicy(
+        provider="coinmarketcap",
+        role="rankings_market_and_narrative_context",
+        auth_mode="public_or_server_environment_key",
+        cost_tier="free_or_metered",
+        quota_model="credit_based",
+        freshness_target_seconds=300.0,
+        licensing="personal_local_research",
+        shadow_only=True,
+        research_only=False,
+    ),
+    "cryptopanic": ProviderAccessPolicy(
+        provider="cryptopanic",
+        role="news_and_catalyst_context",
+        auth_mode="server_environment_key",
+        cost_tier="free_or_metered",
+        quota_model="provider_plan",
+        freshness_target_seconds=900.0,
+        licensing="personal_local_research",
+        shadow_only=True,
+        research_only=False,
+    ),
+    "dune_mcp": ProviderAccessPolicy(
+        provider="dune_mcp",
+        role="onchain_hypothesis_research",
+        auth_mode="user_level_oauth_or_key",
+        cost_tier="metered",
+        quota_model="credit_based",
+        freshness_target_seconds=3600.0,
+        licensing="personal_local_research_review_required",
+        shadow_only=True,
+        research_only=True,
+    ),
+    "nansen_mcp": ProviderAccessPolicy(
+        provider="nansen_mcp",
+        role="optional_onchain_flow_research",
+        auth_mode="user_level_key",
+        cost_tier="metered",
+        quota_model="credit_based",
+        freshness_target_seconds=3600.0,
+        licensing="restricted_redistribution_review_required",
+        shadow_only=True,
+        research_only=True,
+    ),
+    "traidr_shadow_strategy": ProviderAccessPolicy(
+        provider="traidr_shadow_strategy",
+        role="derived_zero_weight_regime_classification",
+        auth_mode="local_derived",
+        cost_tier="local",
+        quota_model="none",
+        freshness_target_seconds=300.0,
+        licensing="internal_derived_research",
+        shadow_only=True,
+        research_only=False,
+    ),
+}
+
+
+def provider_access_policy(provider: str) -> ProviderAccessPolicy:
+    """Return a fail-closed policy for known and future read-only providers."""
+
+    policy = PROVIDER_ACCESS_POLICIES.get(provider)
+    if policy is not None:
+        return policy
+    return ProviderAccessPolicy(
+        provider=provider,
+        role="unclassified_research_context",
+        auth_mode="unknown",
+        cost_tier="unknown",
+        quota_model="unknown",
+        freshness_target_seconds=300.0,
+        licensing="review_required",
+        shadow_only=True,
+        research_only=True,
+    )
 
 
 class ProviderHealthStatus(StrEnum):

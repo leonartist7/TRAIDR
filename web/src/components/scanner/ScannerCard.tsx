@@ -26,6 +26,24 @@ export function ScannerCard({ row, compact = false }: { row: ScannerRow; compact
         <div><span>Evidence</span><strong>{row.factors.filter((factor) => factor.raw_value !== null).length}/10</strong></div>
       </div>
 
+      {row.shadow && (
+        <section className="shadow-intelligence" aria-label="Zero-weight shadow intelligence">
+          <div className="shadow-intelligence__heading">
+            <span>Derived · shadow</span>
+            <strong>0% score weight · {row.shadow.probability_state}</strong>
+          </div>
+          <div className="shadow-intelligence__grid">
+            <div><span>Regime</span><strong>{humanizeReason(row.shadow.market_regime)}</strong></div>
+            <div><span>Setup</span><strong>{humanizeReason(row.shadow.setup_class)}</strong></div>
+            <div><span>Crowding</span><strong>{compactScore(row.shadow.crowding_score)}</strong></div>
+            <div><span>Data quality</span><strong>{compactScore(row.shadow.data_quality_score)}</strong></div>
+          </div>
+          {row.shadow.conflicts.length > 0 && (
+            <p className="conflict-note"><AlertTriangle size={15} aria-hidden="true" /> Shadow source conflict · no trade</p>
+          )}
+        </section>
+      )}
+
       <div className="factor-list" aria-label="Strongest contributing factors">
         {topFactors.map((factor) => (
           <div className="factor-row" key={factor.factor}>

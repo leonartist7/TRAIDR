@@ -1,8 +1,8 @@
 # TRAIDR Canonical Implementation Plan
 
-Plan revision: 2026-08-02
+Plan revision: 2026-08-04
 
-Planning baseline reviewed: `4f009a8`
+Planning baseline reviewed: `7afa4fd` plus the current accuracy/intelligence workstream
 
 Target release: `v0.2.0`
 
@@ -56,25 +56,23 @@ Any proposal that weakens this contract is rejected rather than hidden behind a 
 | --- | --- | --- |
 | Bitunix public ingestion | REST and WebSocket candles, tickers, order book, trades, funding, reconnects, aggregation, gap detection, and recovery | Retain and regression-test |
 | Asset identity | Reviewed exact mappings for BTCUSDT and HYPEUSDT; unmapped assets do not receive symbol-only cross-source joins | Retain fail-closed behavior |
-| External research providers | Unified read-only contracts; CoinGlass, CoinGecko, CoinMarketCap, caching, health, rate limiting, and conflict structures | Fix verified gaps before release |
+| External research providers | Unified read-only contracts; CoinGlass core and expanded shadow metrics, CoinGecko, CoinMarketCap, CryptoPanic, caching, health, rate limiting, capability/cost/quota/licensing metadata, and conflict structures | Live keyed verification remains gated |
 | Evidence and decisions | Multi-horizon features, order flow, funding, basis, liquidity, contradiction detection, deterministic decisions, and reason codes | Retain safety-veto precedence |
 | Backtesting and calibration | Forward-only labeling, walk-forward tests, overlap exclusion, replay hashing, local artifacts, and calibration gates | External evidence gates remain open |
 | Paper futures | Long/short positions, partial fills, fees, funding, slippage, stops, targets, liquidation, stress, recovery, and reconciliation | Simulation only; disabled by default |
-| Persistence and dashboard | DuckDB schema v8, scanner score persistence, read-only cockpit, scanner, evidence, health, paper portfolio, and audit views | Add migration/restore/browser proof |
+| Persistence and dashboard | DuckDB schema v9, scanner and zero-weight shadow-evidence persistence, read-only cockpit, scanner, evidence, provider health, derivatives regime, news context, paper portfolio, and audit views | Add schema-v9 migration/restore/browser proof |
 | Certification tooling | `certify shadow`, `certify status`, `certify report`, fault injection, backup and replay gates | 72-hour run still pending |
 
 ### 3.2 Verified blockers and open gaps
 
 | Priority | Gap | Evidence | Required outcome |
 | --- | --- | --- | --- |
-| P0 | Local `.venv` points to a missing Python 3.11 interpreter | Fast verification commands exit `101`; Ruff alone passes | Rebuild locked Python 3.11 environment |
-| P1 | Six-hour-old provider observations can merge as `HEALTHY` and produce a directional scanner result | `data_pipeline/provider_contracts.py`, `scoring/live_scanner.py` | Enforce explicit freshness policy and fail closed |
-| P1 | Network `Retry-After` can be ignored because HTTPX dictionary keys are lowercase | `data_pipeline/market_data_providers.py` | Use case-insensitive header access and test it |
-| P1 | Incomplete scanner evidence reports available raw factors as zero | `scoring/live_scanner.py` | Preserve evidence while keeping contribution zero |
-| P1 | Live Scanner migration/restore and browser behavior lack focused proof | Existing focused tests cover persistence but not full migration/restore/UI flow | Add schema upgrade, restore, query, and Playwright tests |
-| P2 | BTC/ETH correlation and directional catalyst evidence are intentionally unavailable | Scanner remains `INSUFFICIENT_DATA` | Add independently verified read-only adapters |
-| P2 | Optional CoinGlass and CoinMarketCap authenticated paths lack controlled operator-key evidence | Keys are not available in test fixtures by design | Run secret-safe controlled verification |
-| P2 | Full-repository mypy has 87 older errors | Verification handoff baseline | Resolve or approve a documented debt boundary before release |
+| P0 | Optional CoinGlass, CoinMarketCap, and CryptoPanic authenticated paths lack controlled operator-key evidence | Keys are intentionally absent from fixtures and the current process | Run secret-safe live shadow verification |
+| P1 | Schema-v9 migration/restore and browser behavior need release evidence | Focused persistence/API/frontend tests exist | Add migration fixture, restore proof, and browser screenshots |
+| P1 | Shadow feature promotion evidence does not yet exist | All new features are fixed at zero scoring weight | Run ablation and leakage-safe walk-forward validation |
+| P2 | BTC/ETH regime breadth and DeFiLlama unlock-risk expansion remain incomplete | Current cross-market checks are narrower than the target regime layer | Add deterministic adapters only after P0 stability |
+| P2 | MCPs are not configured at user level | Repository boundary is research-only and injection tested | Operator configures CoinGecko/CMC/Dune; Nansen remains optional |
+| P2 | Full-repository mypy retains older certification-module errors | Changed files pass strict mypy | Resolve or approve a documented debt boundary before release |
 | External | GitHub Actions billing/account access, 72-hour shadow, backup restore, repeated replay, and calibration evidence remain open | Production certification documents | Complete before tagging `v0.2.0` |
 
 ## 4. Target architecture
@@ -129,6 +127,20 @@ Detailed visual-platform workstream:
 | 7. Release `v0.2.0` | Release gate | 1-2 hours | All preceding phases and CI | Signed-off tag and evidence manifest |
 
 Effort estimates are engineering time, not elapsed certification or data-collection time.
+
+### Accuracy and intelligence delivery status
+
+| Work package | State | Acceptance evidence |
+| --- | --- | --- |
+| Secure provider metadata and key boundaries | Implemented | Keys remain process-only; health exposes non-secret capability, quota, cost, freshness, and licensing metadata |
+| CoinGlass expanded derivatives collection | Implemented in shadow mode | 5m/15m/1h/4h OI change, weighted funding, liquidation acceleration, ratios, taker flow, and crowding normalize with zero weight |
+| CryptoPanic catalyst context | Implemented in shadow mode | Duplicate headlines group; news cannot emit a directional factor |
+| Four-layer derivatives classification | Implemented as descriptive shadow assessment | Explicit setup/regime/crowding/squeeze/catalyst/data-quality fields; decision remains `NO_TRADE` and probability `UNCALIBRATED` |
+| MCP research safety boundary | Implemented | Citations and freshness required; prompt injection and action requests are quarantined; scoring weight is zero |
+| React intelligence visibility | Implemented | Provider readiness, shadow regime, catalyst timeline, and score explanations distinguish observed versus derived evidence |
+| Promotion to production scoring | Not authorized | Requires every gate in Section 8 and at least 500 independent out-of-sample outcomes |
+
+Dependencies before promotion: operator-owned API keys, stable network access, synchronized outcome history, three or more walk-forward folds, deterministic replay evidence, and completed schema-v9 restore/browser certification.
 
 ## 6. Phase specifications
 

@@ -12,6 +12,8 @@ const initialState: ResearchViewState = {
   loadedAt: null,
 };
 
+export const RESEARCH_POLL_INTERVAL_MS = 15_000;
+
 export function useResearchData(): ResearchViewState & { reload: () => void } {
   const [state, setState] = useState<ResearchViewState>(initialState);
   const [reloadKey, setReloadKey] = useState(0);
@@ -24,6 +26,8 @@ export function useResearchData(): ResearchViewState & { reload: () => void } {
   useEffect(() => {
     const controller = new AbortController();
     const previewOnly = import.meta.env.VITE_TRAIDR_DATA_MODE === "preview";
+    let pollTimer: number | null = null;
+    let hasLiveSnapshot = false;
 
     async function load(): Promise<void> {
       if (previewOnly) {
@@ -39,6 +43,7 @@ export function useResearchData(): ResearchViewState & { reload: () => void } {
 
       try {
         const snapshot = await loadResearchSnapshot(controller.signal);
+        hasLiveSnapshot = true;
         setState({
           phase: "ready",
           source: "local-api",
@@ -48,21 +53,31 @@ export function useResearchData(): ResearchViewState & { reload: () => void } {
         });
       } catch (error) {
         if (controller.signal.aborted) return;
-        setState({
-          phase: "ready",
-          source: "preview",
-          snapshot: previewSnapshot,
-          connectionMessage:
-            error instanceof Error
-              ? `Local API unavailable: ${error.message}`
-              : "Local API unavailable. Preview state is active.",
-          loadedAt: new Date().toISOString(),
-        });
+        const message = error instanceof Error
+          ? `Local API unavailable: ${error.message}`
+          : "Local API unavailable. Preview state is active.";
+        setState((current) => hasLiveSnapshot && current.snapshot
+          ? { ...current, phase: "ready", connectionMessage: message }
+          : {
+              phase: "ready",
+              source: "preview",
+              snapshot: previewSnapshot,
+              connectionMessage: message,
+              loadedAt: new Date().toISOString(),
+            });
       }
     }
 
     void load();
-    return () => controller.abort();
+    if (!previewOnly) {
+      pollTimer = window.setInterval(() => {
+        if (!document.hidden) void load();
+      }, RESEARCH_POLL_INTERVAL_MS);
+    }
+    return () => {
+      controller.abort();
+      if (pollTimer !== null) window.clearInterval(pollTimer);
+    };
   }, [reloadKey]);
 
   return { ...state, reload };

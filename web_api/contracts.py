@@ -46,6 +46,24 @@ class StatusData(ReadModel):
     safety: dict[str, Any] = Field(default_factory=dict)
 
 
+class ShadowEvidenceData(ReadModel):
+    provider: str
+    observed_at: datetime | None = None
+    freshness: FreshnessState = "UNKNOWN"
+    setup_class: str = "INSUFFICIENT_DATA"
+    market_regime: str = "INSUFFICIENT_DATA"
+    crowding_score: float | None = None
+    squeeze_risk: float | None = None
+    catalyst_risk: float | None = None
+    data_quality_score: float = 0.0
+    probability_state: str = "UNCALIBRATED"
+    scoring_weight: float = Field(default=0.0, ge=0.0, le=0.0)
+    fields: dict[str, float] = Field(default_factory=dict)
+    conflicts: list[str] = Field(default_factory=list)
+    reason_codes: list[str] = Field(default_factory=list)
+    can_execute_trades: Literal[False] = False
+
+
 class ScannerFactorData(ReadModel):
     factor: str
     weight: float
@@ -72,6 +90,7 @@ class ScannerRow(ReadModel):
     conflicts: list[str] = Field(default_factory=list)
     reason_codes: list[str] = Field(default_factory=list)
     factors: list[ScannerFactorData] = Field(default_factory=list)
+    shadow: ShadowEvidenceData | None = None
     can_execute_trades: Literal[False] = False
 
 
@@ -86,6 +105,8 @@ class OverviewData(ReadModel):
     alerts: list[dict[str, Any]] = Field(default_factory=list)
     paper_positions: list[dict[str, Any]] = Field(default_factory=list)
     service_heartbeats: list[dict[str, Any]] = Field(default_factory=list)
+    shadow_evidence: list[ShadowEvidenceData] = Field(default_factory=list)
+    news: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class CandleData(ReadModel):

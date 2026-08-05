@@ -26,7 +26,8 @@ from data_pipeline.candle_pipeline import OneMinuteCandlePipeline, aggregate_can
 from data_pipeline.microstructure import MicrostructureAccumulator
 from data_pipeline.provider_runtime import ProviderCircuitBreaker, TokenBucket
 from data_pipeline.coingecko_adapter import CoinGeckoAdapter, default_coingecko_transport
-from data_pipeline.market_data_providers import CoinGlassProvider, CoinMarketCapProvider
+from data_pipeline.market_data_providers import CoinGlassProvider, CoinMarketCapProvider, CryptoPanicProvider
+from data_pipeline.provider_contracts import ProviderCapability, ProviderObservation
 from execution.paper_futures import PaperFuturesSimulator
 from execution.portfolio_stress import assess_portfolio_stress
 from intelligence.evidence_engine import (
@@ -47,6 +48,7 @@ from intelligence.production_models import (
 from risk.production_gate import assess_paper_signal
 from scoring.signal_engine import score_directional_setup
 from scoring.live_scanner import ScannerInput, ScannerScore, score_scanner_input
+from scoring.shadow_strategy import classify_shadow_strategy
 from scoring.model_lifecycle import train_eligible_buckets
 from scoring.outcome_labeler import label_expired_signals
 from scheduler.control_api import LocalControlServer
@@ -92,6 +94,7 @@ class LiveResearchService:
         # Optional keys are read from the process environment only; they are never persisted or logged.
         self.coinglass = CoinGlassProvider(api_key=os.environ.get("COINGLASS_API_KEY"))
         self.coinmarketcap = CoinMarketCapProvider(api_key=os.environ.get("COINMARKETCAP_API_KEY"))
+        self.cryptopanic = CryptoPanicProvider(api_key=os.environ.get("CRYPTOPANIC_API_KEY"))
         self.rss = RSSNewsAdapter(default_rss_transport)
         self._news_cache: dict[str, tuple[dict[str, Any], ...]] = {}
         self.logger: logging.Logger = logging.getLogger("traidr.live_service")
@@ -283,6 +286,13 @@ class LiveResearchService:
                         canonical_asset_id=identity.canonical_asset_id if identity else None,
                     )
                     repository.record_scanner_score(scanner_score)
+                    await self._record_shadow_context(
+                        repository=repository,
+                        symbol=symbol,
+                        feature=feature,
+                        candles=candles,
+                        external_context=cross_market,
+                    )
                 bundle = build_evidence_bundle(
                     feature,
                     canonical_asset_id=identity.canonical_asset_id if identity else None,
@@ -449,6 +459,66 @@ class LiveResearchService:
                 if previous > 0
             )
         return histories
+
+    async def _record_shadow_context(
+        self,
+        *,
+        repository: MarketRepository,
+        symbol: str,
+        feature: FeatureSnapshot,
+        candles: tuple[BitunixCandle, ...] | list[BitunixCandle],
+        external_context: dict[str, Any] | None,
+    ) -> None:
+        """Persist optional provider evidence with an explicit zero scoring weight."""
+
+        instrument_id = f"bitunix:{symbol}"
+        results = await asyncio.gather(
+            self.coinglass.fetch_shadow(symbol),
+            self.coinmarketcap.fetch(symbol),
+            self.cryptopanic.fetch(symbol),
+        )
+        fields: dict[str, float] = {}
+        observed_times = [feature.observed_at]
+        reasons: list[str] = []
+        for result in results:
+            reasons.extend(result.reason_codes)
+            if result.ok and result.value is not None:
+                repository.record_shadow_evidence(result.value)
+                fields.update(result.value.fields)
+                observed_times.append(result.value.observed_at)
+
+        if len(candles) >= 5 and float(candles[-5].close) > 0:
+            fields["price_change_1h_pct"] = (
+                (float(candles[-1].close) / float(candles[-5].close)) - 1.0
+            ) * 100.0
+        context = external_context or {}
+        conflicts = tuple(
+            f"{key.upper()}_OVER_100_BPS"
+            for key in ("divergence_bps", "coinmarketcap_divergence_bps")
+            if isinstance(context.get(key), (int, float)) and abs(float(context[key])) > 100.0
+        )
+        observed_at = min(observed_times)
+        assessment = classify_shadow_strategy(
+            instrument_id,
+            fields,
+            observed_at=observed_at,
+            conflicts=conflicts,
+        )
+        derived = ProviderObservation(
+            provider="traidr_shadow_strategy",
+            instrument_id=instrument_id,
+            observed_at=observed_at,
+            received_at=datetime.now(tz=UTC),
+            fields=fields,
+            capabilities=(ProviderCapability.MARKET_REGIME,),
+            metadata={
+                "shadow_only": "true",
+                "probability_state": assessment.probability_state.value,
+                "source_count": str(sum(1 for result in results if result.ok)),
+            },
+            reason_codes=tuple(dict.fromkeys((*reasons, *assessment.reason_codes))),
+        )
+        repository.record_shadow_evidence(derived, assessment)
 
     async def _handle_event(self, repository: MarketRepository, event: MarketEvent) -> None:
         repository.record_market_event(event)

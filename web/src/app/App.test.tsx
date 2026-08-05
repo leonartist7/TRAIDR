@@ -28,6 +28,10 @@ it("renders an ADHD-friendly, visibly non-live command center", () => {
   expect(screen.getByText(/PREVIEW DATA · NOT LIVE/i)).toBeInTheDocument();
   expect(screen.getByText("Your next safe action")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /buy|sell|withdraw|leverage|order/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Provider readiness" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Derivatives regime" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "News & catalysts" })).toBeInTheDocument();
+  expect(screen.getAllByText(/Data not available/i)).toHaveLength(2);
 });
 
 it("supports keyboard-friendly navigation to scanner evidence", async () => {

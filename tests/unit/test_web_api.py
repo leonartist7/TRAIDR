@@ -6,11 +6,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from data_pipeline.bitunix_models import BitunixCandle, BitunixTradingPair
+from data_pipeline.provider_contracts import ProviderCapability, ProviderObservation
 from intelligence.production_models import DataHealth, MarketChannel, SignalDirection
 from storage.duckdb_store import DuckDBStore
 from storage.market_repository import MarketRepository
 from storage.schema import initialize_schema
 from scoring.live_scanner import ScannerFactor, ScannerScore
+from scoring.shadow_strategy import classify_shadow_strategy
 from web_api import create_app
 from web_api.app import validate_loopback_host
 
@@ -82,6 +84,31 @@ def _seed_database(database: Path) -> None:
             now=now,
         ) == "bitunix:BTCUSDT"
         assert repository.record_scanner_score(score)
+        shadow_fields = {
+            "price_change_1h_pct": 1.0,
+            "oi_change_pct_1h": 2.0,
+            "funding_rate": 0.0001,
+            "liquidation_pressure": 0.1,
+            "taker_buy_sell_imbalance": 0.2,
+        }
+        shadow = ProviderObservation(
+            provider="traidr_shadow_strategy",
+            instrument_id="bitunix:BTCUSDT",
+            observed_at=now,
+            received_at=now,
+            fields=shadow_fields,
+            capabilities=(ProviderCapability.MARKET_REGIME,),
+            reason_codes=("SHADOW_ONLY", "ZERO_SCORING_WEIGHT"),
+        )
+        assert repository.record_shadow_evidence(
+            shadow,
+            classify_shadow_strategy(
+                "bitunix:BTCUSDT",
+                shadow_fields,
+                observed_at=now,
+                reference_at=now,
+            ),
+        )
         assert repository.upsert_candles(
             "bitunix:BTCUSDT",
             "1h",
@@ -100,6 +127,8 @@ def test_api_missing_database_is_fail_closed_and_does_not_write(tmp_path: Path) 
     assert response.status_code == 200
     assert payload["status"] == "INSUFFICIENT_DATA"
     assert payload["data"]["database_exists"] is False
+    assert all(item["can_execute_trades"] is False for item in payload["data"]["provider_health"])
+    assert "api_key" not in response.text.lower()
     assert payload["can_execute_trades"] is False
     assert payload["request_id"] == "test-request-1"
     assert response.headers["X-Request-ID"] == "test-request-1"
@@ -120,8 +149,11 @@ def test_api_scanner_overview_and_chart_are_read_only_views(tmp_path: Path) -> N
     assert scanner["status"] == "OK"
     assert scanner["data"]["rows"][0]["direction"] == "LONG"
     assert scanner["data"]["rows"][0]["factors"][0]["raw_value"] == 0.8
+    assert scanner["data"]["rows"][0]["shadow"]["setup_class"] == "MOMENTUM_BUILD"
+    assert scanner["data"]["rows"][0]["shadow"]["scoring_weight"] == 0.0
     assert scanner_detail["data"]["rows"][0]["factors"][0]["factor"] == "price_structure"
     assert overview["data"]["scanner"][0]["instrument_id"] == "bitunix:BTCUSDT"
+    assert overview["data"]["shadow_evidence"][0]["probability_state"] == "UNCALIBRATED"
     assert markets["status"] == "OK"
     assert markets["data"]["instruments"][0]["instrument_id"] == "bitunix:BTCUSDT"
     assert chart["status"] == "OK"

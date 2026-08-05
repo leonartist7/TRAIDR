@@ -8,7 +8,7 @@ Planning baseline: `d6caeda`
 
 Target: a polished local SaaS-style visual platform with live public-market research, explainable scanner results, paper-futures views, operational health, and an evidence-grounded research chat.
 
-Implementation status (2026-08-04): V0, V1, and V2 pass locally. V3-V6 remain pending. TRAIDR is still a production candidate and has not passed the 72-hour certification gate.
+Implementation status (2026-08-04): V0, V1, V2, bounded 15-second read-only snapshot polling, and the zero-weight intelligence-panel increment pass focused local checks. V3 market workspace through V6 certification remain pending. Provider readiness, derivatives regime, catalyst context, and exact shadow explanations are visible; full chart workspace, Ask TRAIDR UI, and certification remain pending.
 
 This plan does not authorize live trading, private exchange endpoints, wallet access, signing, transfers, withdrawals, custody, or secret exposure.
 
@@ -59,7 +59,7 @@ What remains:
 - The React/TypeScript V2 shell now provides the Command Center, Scanner, responsive navigation, explicit preview state, and a guarded read-only API client.
 - Ask TRAIDR is CLI-only and is not connected to a visual chat surface.
 - The React shell does not yet have market workspace, paper portfolio, operations, audit, or research-chat parity with Streamlit.
-- Bounded live polling, chart integration, and citation-ready research responses remain V3-V5 work.
+- Bounded live snapshot polling is implemented; chart integration and citation-ready research responses remain V3-V5 work.
 - Streamlit remains the verified fallback until parity and release gates pass.
 
 ## 4. Safety invariants

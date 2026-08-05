@@ -13,6 +13,7 @@ from dashboard.queries import (
     load_market_candles,
     load_market_instruments,
 )
+from data_pipeline.provider_contracts import PROVIDER_ACCESS_POLICIES
 from web_api.contracts import (
     ApiStatus,
     CandleData,
@@ -24,6 +25,7 @@ from web_api.contracts import (
     ScannerData,
     ScannerFactorData,
     ScannerRow,
+    ShadowEvidenceData,
     StatusData,
 )
 
@@ -45,18 +47,32 @@ def build_status(data: DashboardData) -> StatusData:
         ),
         default=None,
     )
+    circuit_health = {
+        str(row.get("provider")): row
+        for row in data.provider_circuits
+    }
+    latest_shadow: dict[str, dict[str, Any]] = {}
+    for row in data.shadow_evidence:
+        latest_shadow.setdefault(str(row.get("provider")), row)
     provider_health = [
         {
-            "provider": row.get("provider"),
-            "channel": row.get("channel"),
-            "state": row.get("state"),
-            "failure_count": row.get("failure_count"),
-            "retry_after": row.get("retry_after"),
-            "updated_at": row.get("updated_at"),
-            "reason_codes": _json_strings(row.get("reason_codes_json")),
+            "provider": policy.provider,
+            "role": policy.role,
+            "auth_mode": policy.auth_mode,
+            "cost_tier": policy.cost_tier,
+            "quota_model": policy.quota_model,
+            "freshness_target_seconds": policy.freshness_target_seconds,
+            "licensing": policy.licensing,
+            "shadow_only": policy.shadow_only,
+            "research_only": policy.research_only,
+            "state": circuit_health.get(policy.provider, {}).get(
+                "state", "OBSERVED" if policy.provider in latest_shadow else "DATA_NOT_AVAILABLE"
+            ),
+            "observed_at": latest_shadow.get(policy.provider, {}).get("observed_at"),
+            "reason_codes": _json_strings(latest_shadow.get(policy.provider, {}).get("reason_codes_json")),
             "can_execute_trades": False,
         }
-        for row in data.provider_circuits
+        for policy in PROVIDER_ACCESS_POLICIES.values()
     ]
     return StatusData(
         database_exists=data.database_exists,
@@ -76,8 +92,13 @@ def build_scanner(
     direction: str | None = None,
     instrument_id: str | None = None,
 ) -> ScannerData:
+    shadow_by_instrument = {
+        str(row.get("instrument_id")): row
+        for row in reversed(data.shadow_evidence)
+        if row.get("provider") == "traidr_shadow_strategy"
+    }
     rows = [
-        _scanner_row(row)
+        _scanner_row(row, shadow_by_instrument.get(str(row.get("instrument_id"))))
         for row in data.scanner_scores
         if (instrument_id is None or row.get("instrument_id") == instrument_id)
         if (status is None or str(row.get("status", "")).upper() == status.upper())
@@ -93,6 +114,12 @@ def build_overview(data: DashboardData, *, limit: int) -> OverviewData:
         alerts=[_public_alert(row) for row in data.alerts[:limit]],
         paper_positions=[_public_position(row) for row in data.paper_futures_positions[:limit]],
         service_heartbeats=[_public_heartbeat(row) for row in data.service_heartbeats[:limit]],
+        shadow_evidence=[
+            _shadow_evidence(row)
+            for row in data.shadow_evidence
+            if row.get("provider") == "traidr_shadow_strategy"
+        ][:limit],
+        news=[_public_news(row) for row in data.news_evidence[:limit]],
     )
 
 
@@ -120,7 +147,21 @@ def build_market(
         if (received_at := _as_datetime(row.get("received_at"))) is not None
     ]
     scanner = next(
-        (_scanner_row(row) for row in data.scanner_scores if row.get("instrument_id") == instrument_id),
+        (
+            _scanner_row(
+                row,
+                next(
+                    (
+                        item for item in data.shadow_evidence
+                        if item.get("instrument_id") == instrument_id
+                        and item.get("provider") == "traidr_shadow_strategy"
+                    ),
+                    None,
+                ),
+            )
+            for row in data.scanner_scores
+            if row.get("instrument_id") == instrument_id
+        ),
         None,
     )
     microstructure = [
@@ -228,7 +269,7 @@ def scanner_reason_codes(data: DashboardData, *, has_data: bool) -> tuple[str, .
     )
 
 
-def _scanner_row(row: dict[str, Any]) -> ScannerRow:
+def _scanner_row(row: dict[str, Any], shadow: dict[str, Any] | None = None) -> ScannerRow:
     return ScannerRow(
         score_id=str(row.get("score_id", "")),
         instrument_id=str(row.get("instrument_id", "")),
@@ -243,6 +284,33 @@ def _scanner_row(row: dict[str, Any]) -> ScannerRow:
         conflicts=_json_strings(row.get("conflicts_json")),
         reason_codes=_json_strings(row.get("reason_codes_json")),
         factors=[_scanner_factor(item) for item in _json_objects(row.get("factor_breakdown_json"))],
+        shadow=_shadow_evidence(shadow) if shadow is not None else None,
+    )
+
+
+def _shadow_evidence(row: dict[str, Any]) -> ShadowEvidenceData:
+    assessment = _json_object(row.get("assessment_json"))
+    fields = {
+        key: value
+        for key, raw in _json_object(row.get("fields_json")).items()
+        if (value := _as_float(raw)) is not None
+    }
+    observed_at = _as_datetime(row.get("observed_at"))
+    freshness = freshness_for(observed_at).state
+    return ShadowEvidenceData(
+        provider=str(row.get("provider", "unknown")),
+        observed_at=observed_at,
+        freshness=freshness,
+        setup_class=str(assessment.get("setup_class", "INSUFFICIENT_DATA")),
+        market_regime=str(assessment.get("market_regime", "INSUFFICIENT_DATA")),
+        crowding_score=_as_float(assessment.get("crowding_score")),
+        squeeze_risk=_as_float(assessment.get("squeeze_risk")),
+        catalyst_risk=_as_float(assessment.get("catalyst_risk")),
+        data_quality_score=_as_float(assessment.get("data_quality_score")) or 0.0,
+        probability_state=str(assessment.get("probability_state", "UNCALIBRATED")),
+        fields=fields,
+        conflicts=_json_strings(assessment.get("conflicts")),
+        reason_codes=_json_strings(row.get("reason_codes_json")),
     )
 
 
@@ -309,6 +377,24 @@ def _public_heartbeat(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _public_news(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "evidence_id": row.get("evidence_id"),
+        "canonical_asset_id": row.get("canonical_asset_id"),
+        "source": row.get("source"),
+        "headline": row.get("headline"),
+        "url": row.get("url"),
+        "published_at": row.get("published_at"),
+        "reliability": row.get("reliability"),
+        "relevance": row.get("relevance"),
+        "mapping_state": row.get("mapping_state"),
+        "reason_codes": _json_strings(row.get("reason_codes_json")),
+        "evidence_kind": "OBSERVED_FACT",
+        "directional_authority": "NONE",
+        "can_execute_trades": False,
+    }
+
+
 def _public_microstructure(row: dict[str, Any]) -> dict[str, Any]:
     return {
         key: row.get(key)
@@ -352,6 +438,18 @@ def _json_objects(value: Any) -> list[dict[str, Any]]:
     except (TypeError, ValueError):
         return []
     return [item for item in decoded if isinstance(item, dict)] if isinstance(decoded, list) else []
+
+
+def _json_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if not isinstance(value, str):
+        return {}
+    try:
+        decoded = json.loads(value)
+    except (TypeError, ValueError):
+        return {}
+    return decoded if isinstance(decoded, dict) else {}
 
 
 def _json_strings(value: Any) -> list[str]:

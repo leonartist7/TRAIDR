@@ -12,6 +12,7 @@ from data_pipeline.market_data_providers import (
     CoinGlassProvider,
     CoinGeckoProvider,
     CoinMarketCapProvider,
+    CryptoPanicProvider,
 )
 from data_pipeline.provider_contracts import (
     ProviderCapability,
@@ -22,8 +23,11 @@ from data_pipeline.provider_contracts import (
     ProviderResult,
     merge_provider_observations,
     normalize_timestamp,
+    provider_access_policy,
 )
+from data_pipeline.provider_runtime import TokenBucket
 from scoring.live_scanner import ScannerInput, score_scanner_input
+from scoring.shadow_strategy import MarketRegime, SetupClass, classify_shadow_strategy
 from storage.market_repository import MarketRepository
 from scheduler.live_service import LiveResearchService
 from storage.schema import initialize_schema
@@ -186,6 +190,125 @@ def test_coinglass_normalizes_derivatives_metrics() -> None:
     assert result.value.fields["oi_change_pct"] == 4.0
     assert result.value.fields["liquidation_pressure"] == 0.4
     assert result.value.can_execute_trades is False
+
+
+def test_coinglass_shadow_collects_expanded_zero_weight_metrics() -> None:
+    async def transport(
+        url: str,
+        params: dict[str, str],
+        headers: dict[str, str],
+    ) -> ProviderHttpResponse:
+        del headers
+        if "funding-rate" in url:
+            payload: Any = {"data": [{"fundingRate": "0.0003", "timestamp": NOW.isoformat()}]}
+        elif "open-interest" in url:
+            payload = {
+                "data": [
+                    {"openInterest": "100", "timestamp": (NOW - timedelta(hours=1)).isoformat()},
+                    {"openInterest": "104", "timestamp": NOW.isoformat()},
+                ]
+            }
+        elif "liquidation" in url:
+            payload = {"data": [{"longLiquidationUsd": "700", "shortLiquidationUsd": "300", "timestamp": NOW.isoformat()}]}
+        elif "taker-buy" in url:
+            payload = {"data": [{"buyVolume": "70", "sellVolume": "30", "timestamp": NOW.isoformat()}]}
+        elif "coins-markets" in url:
+            payload = {"data": [{"open_interest_market_cap_ratio": "0.04", "open_interest_volume_ratio": "0.7", "timestamp": NOW.isoformat()}]}
+        else:
+            payload = {"data": [{"longShortRatio": "1.2", "timestamp": NOW.isoformat()}]}
+        assert params.get("symbol") == "BTC"
+        return ProviderHttpResponse(200, payload, received_at=NOW)
+
+    provider = CoinGlassProvider(api_key="test-only", transport=transport)
+    provider.bucket = TokenBucket(rate_per_second=10_000.0, capacity=20)
+    result = asyncio.run(provider.fetch_shadow("BTCUSDT", now=NOW))
+
+    assert result.ok and result.value is not None
+    assert result.value.fields["oi_change_pct_1h"] == 4.0
+    assert result.value.fields["taker_buy_sell_imbalance"] == 0.4
+    assert result.value.fields["oi_market_cap_ratio"] == 0.04
+    assert "SHADOW_FEATURES_ZERO_WEIGHT" in result.value.reason_codes
+    assert result.value.can_execute_trades is False
+
+
+def test_cryptopanic_deduplicates_news_and_never_emits_direction() -> None:
+    async def transport(
+        url: str,
+        params: dict[str, str],
+        headers: dict[str, str],
+    ) -> ProviderHttpResponse:
+        del url, headers
+        assert params["auth_token"] == "test-only"
+        return ProviderHttpResponse(
+            200,
+            {
+                "results": [
+                    {"title": "Bitcoin ETF update", "published_at": NOW.isoformat(), "source": {"title": "A"}},
+                    {"title": "Bitcoin ETF update!", "published_at": NOW.isoformat(), "source": {"title": "B"}},
+                ]
+            },
+            received_at=NOW,
+        )
+
+    result = asyncio.run(CryptoPanicProvider(api_key="test-only", transport=transport).fetch("BTCUSDT", now=NOW))
+
+    assert result.ok and result.value is not None
+    assert result.value.fields["news_event_count"] == 1.0
+    assert result.value.fields["news_source_count"] == 2.0
+    assert "news_catalyst" not in result.value.fields
+    assert "test-only" not in str(result.value)
+
+
+def test_provider_policy_defaults_to_research_only_and_non_executing() -> None:
+    policy = provider_access_policy("future-provider")
+
+    assert policy.research_only is True
+    assert policy.shadow_only is True
+    assert policy.can_execute_trades is False
+
+
+def test_shadow_strategy_classifies_price_oi_quadrants_without_direction() -> None:
+    base = {
+        "funding_rate": 0.0001,
+        "liquidation_pressure": 0.1,
+        "taker_buy_sell_imbalance": 0.2,
+    }
+    cases = (
+        (1.0, 2.0, SetupClass.MOMENTUM_BUILD),
+        (1.0, -2.0, SetupClass.SHORT_SQUEEZE),
+        (-1.0, 2.0, SetupClass.SHORT_BUILD),
+        (-1.0, -2.0, SetupClass.LONG_LIQUIDATION),
+    )
+    for price, oi, expected in cases:
+        result = classify_shadow_strategy(
+            "bitunix:BTCUSDT",
+            {**base, "price_change_1h_pct": price, "oi_change_pct_1h": oi},
+            observed_at=NOW,
+            reference_at=NOW,
+        )
+        assert result.setup_class is expected
+        assert result.decision is SignalDirection.NO_TRADE
+        assert result.scoring_weight == 0.0
+
+
+def test_shadow_strategy_conflict_forces_insufficient_data() -> None:
+    result = classify_shadow_strategy(
+        "bitunix:BTCUSDT",
+        {
+            "price_change_1h_pct": 1.0,
+            "oi_change_pct_1h": 2.0,
+            "funding_rate": 0.01,
+            "liquidation_pressure": 0.8,
+            "taker_buy_sell_imbalance": 0.2,
+        },
+        observed_at=NOW,
+        reference_at=NOW,
+        conflicts=("PRICE_CONFLICT",),
+    )
+
+    assert result.setup_class is SetupClass.INSUFFICIENT_DATA
+    assert result.market_regime is MarketRegime.INSUFFICIENT_DATA
+    assert result.decision is SignalDirection.NO_TRADE
 
 
 def test_coingecko_current_and_history_are_read_only() -> None:
@@ -390,5 +513,30 @@ def test_scanner_breakdown_persists_as_read_only_research_state() -> None:
         assert row[0] == "LONG"
         assert row[1] is False
         assert "price_structure" in row[2]
+    finally:
+        connection.close()
+
+
+def test_shadow_evidence_persists_with_hard_zero_weight() -> None:
+    observation = ProviderObservation(
+        provider="coinglass",
+        instrument_id="bitunix:BTCUSDT",
+        observed_at=NOW,
+        received_at=NOW,
+        fields={"funding_rate": 0.0001},
+        capabilities=(ProviderCapability.FUNDING,),
+        metadata={"shadow_only": "true"},
+        reason_codes=("SHADOW_FEATURES_ZERO_WEIGHT",),
+    )
+    connection = duckdb.connect(":memory:")
+    try:
+        initialize_schema(connection)
+        repository = MarketRepository(connection)
+        assert repository.record_shadow_evidence(observation)
+        row = connection.execute(
+            "SELECT shadow_only, scoring_weight, can_execute_trades, fields_json "
+            "FROM shadow_market_evidence"
+        ).fetchone()
+        assert row == (True, 0.0, False, '{"funding_rate":0.0001}')
     finally:
         connection.close()

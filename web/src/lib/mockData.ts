@@ -48,6 +48,7 @@ const previewRows: ScannerRow[] = ["bitunix:BTCUSDT", "bitunix:HYPEUSDT"].map(
     conflicts: [],
     reason_codes: ["LOCAL_API_UNAVAILABLE", "PREVIEW_ONLY"],
     factors: unavailableFactors,
+    shadow: null,
     can_execute_trades: false,
   }),
 );
@@ -91,6 +92,8 @@ export const previewSnapshot: ResearchSnapshot = {
     alerts: [],
     paper_positions: [],
     service_heartbeats: [],
+    shadow_evidence: [],
+    news: [],
   }),
   scanner: envelope<ScannerData>({
     rows: previewRows,

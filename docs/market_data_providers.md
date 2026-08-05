@@ -11,16 +11,21 @@ TRAIDR uses one read-only provider boundary so public sources can be combined wi
 | CoinGlass V4 | Funding, open interest, OI changes, liquidations and long/short ratios | API key required by current API | Cross-exchange derivatives context |
 | CoinGecko | Current and historical market data and metadata; existing CoinGecko/DEX evidence covers liquidity where available | Keyless public API by default | Cross-market and identity-bound context |
 | CoinMarketCap | Quotes, rankings, trends and content; technical indicators use TRAIDR deterministic features | Keyless routes where supported; full catalog requires API key | Market ranking and narrative context |
+| CryptoPanic | Deduplicated coin-specific news importance, novelty, age and corroboration | API key | Context-only catalyst risk; never directional alone |
+| CoinGecko/CMC/Dune MCP | Cited market and on-chain research | User-level MCP configuration | Ask TRAIDR research only; zero scoring authority |
+| Nansen MCP | Optional wallet-label and flow research | User-level key and licensing review | Optional research trial; no SaaS redistribution approval implied |
 
 CoinMarketCap's current public API does not expose documented event-calendar or technical-indicator endpoints in the provider contract. TRAIDR returns CMC_EVENTS_API_UNAVAILABLE rather than scraping or fabricating token events.
 
 ## Code boundaries
 
 - data_pipeline/provider_contracts.py defines the provider protocol, normalized observations, health, cache, timestamp normalization, source conflict records and deterministic merging.
-- data_pipeline/market_data_providers.py implements the Bitunix facade, CoinGlass V4, CoinGecko keyless current/history, CoinMarketCap quotes/rankings/trending/content, and the disabled Bitunix private boundary.
+- data_pipeline/market_data_providers.py implements the Bitunix facade, CoinGlass V4 core and shadow collection, CoinGecko keyless current/history, CoinMarketCap quotes/rankings/trending/content, CryptoPanic context, and the disabled Bitunix private boundary.
 - data_pipeline/provider_factory.py builds the read-only set without persisting credentials.
 - scheduler/live_service.py enriches evidence with optional CoinGlass/CoinMarketCap context; keys are read from process environment only.
-- storage/schema.py and storage/market_repository.py persist schema-v8 scanner breakdowns; dashboard/pages/live_scanner.py renders them read-only.
+- storage/schema.py and storage/market_repository.py persist schema-v9 scanner breakdowns and zero-weight shadow evidence; both dashboards render them read-only.
+- ask/research_context.py quarantines cited MCP research text and prevents it from becoming a score, risk decision, or action.
+- scoring/shadow_strategy.py classifies derivatives behavior for display and ablation only; its decision is always NO_TRADE and its scoring weight is always zero.
 - scoring/live_scanner.py combines providers and returns a factor-by-factor research score.
 - Existing data_pipeline/bitunix_websocket.py, data_pipeline/microstructure.py, data_pipeline/provider_runtime.py, and scheduler/live_service.py remain the source of truth for streaming trades, order-flow aggregation, throttling, circuits, ingestion gaps and DuckDB writes.
 
@@ -62,3 +67,7 @@ The scanner output always contains can_execute_trades: false. It has no order, l
 Keys are passed to provider constructors only. They are not stored in DuckDB, scanner payloads, logs, prompts or dashboard output. Without a CoinGlass or full CoinMarketCap key, the relevant provider remains present but returns a truthful insufficient-data state.
 
 The disabled Bitunix private boundary deliberately has no signing, authentication, order, leverage-change, cancellation or withdrawal implementation.
+
+## Promotion gate
+
+Shadow evidence cannot receive non-zero weight until it reaches 95% supported-instrument coverage, passes timestamp/identity/rate-limit/conflict tests, completes at least three leakage-safe walk-forward folds and 500 independent out-of-sample outcomes, improves relative Brier score by at least 3%, does not worsen ECE by more than 0.01, preserves net expectancy and drawdown limits, reproduces identical replay hashes, and passes all secret/safety scans.

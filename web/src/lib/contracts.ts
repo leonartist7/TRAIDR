@@ -28,6 +28,24 @@ export interface StatusData {
   safety: Record<string, unknown>;
 }
 
+export interface ShadowEvidence {
+  provider: string;
+  observed_at: string | null;
+  freshness: FreshnessState;
+  setup_class: string;
+  market_regime: string;
+  crowding_score: number | null;
+  squeeze_risk: number | null;
+  catalyst_risk: number | null;
+  data_quality_score: number;
+  probability_state: string;
+  scoring_weight: 0;
+  fields: Record<string, number>;
+  conflicts: string[];
+  reason_codes: string[];
+  can_execute_trades: false;
+}
+
 export interface ScannerFactor {
   factor: string;
   weight: number;
@@ -54,6 +72,7 @@ export interface ScannerRow {
   conflicts: string[];
   reason_codes: string[];
   factors: ScannerFactor[];
+  shadow: ShadowEvidence | null;
   can_execute_trades: false;
 }
 
@@ -68,6 +87,8 @@ export interface OverviewData {
   alerts: Array<Record<string, unknown>>;
   paper_positions: Array<Record<string, unknown>>;
   service_heartbeats: Array<Record<string, unknown>>;
+  shadow_evidence: ShadowEvidence[];
+  news: Array<Record<string, unknown>>;
 }
 
 export interface ResearchSnapshot {

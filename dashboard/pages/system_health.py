@@ -51,6 +51,7 @@ def render(data: DashboardData) -> None:
     render_table("Source / Channel Health", data.data_health)
     render_table("Ingestion Gaps and Recovery", data.ingestion_gaps)
     render_table("Provider Circuit Breakers", data.provider_circuits)
+    render_table("Shadow Evidence (0% scoring weight)", data.shadow_evidence)
     render_table("Probability Calibration", data.calibration_reports)
     render_table("Model Champion / Challenger Artifacts", data.model_artifacts)
     render_table("Production Certification", data.certification_runs)

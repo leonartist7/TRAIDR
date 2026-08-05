@@ -11,6 +11,7 @@ from uuid import uuid4
 import duckdb
 
 from data_pipeline.bitunix_models import BitunixCandle, BitunixTradingPair
+from data_pipeline.provider_contracts import ProviderObservation
 from execution.paper_futures import (
     PaperFuturesFill,
     PaperFuturesOrder,
@@ -18,6 +19,7 @@ from execution.paper_futures import (
     PaperPosition,
 )
 from scoring.live_scanner import ScannerScore
+from scoring.shadow_strategy import ShadowStrategyAssessment
 from intelligence.production_models import (
     CanonicalAssetIdentity,
     CertificationReport,
@@ -410,6 +412,44 @@ class MarketRepository:
                 _safe_json(score.conflicts),
                 _safe_json(score.reason_codes),
                 _safe_json(score.factor_breakdown()),
+            ],
+        )
+        return cursor.fetchone() is not None
+
+    def record_shadow_evidence(
+        self,
+        observation: ProviderObservation,
+        assessment: ShadowStrategyAssessment | None = None,
+    ) -> bool:
+        """Persist normalized zero-weight provider evidence without provider secrets."""
+
+        evidence_id = (
+            f"shadow:{observation.provider}:{observation.instrument_id}:"
+            f"{observation.observed_at.isoformat()}"
+        )
+        cursor = self.connection.execute(
+            """
+            INSERT INTO shadow_market_evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, 0.0, FALSE)
+            ON CONFLICT (shadow_evidence_id) DO UPDATE SET
+                received_at = excluded.received_at,
+                recorded_at = excluded.recorded_at,
+                fields_json = excluded.fields_json,
+                metadata_json = excluded.metadata_json,
+                reason_codes_json = excluded.reason_codes_json,
+                assessment_json = excluded.assessment_json
+            RETURNING shadow_evidence_id
+            """,
+            [
+                evidence_id,
+                observation.instrument_id,
+                observation.provider,
+                observation.observed_at,
+                observation.received_at,
+                datetime.now(tz=UTC),
+                _safe_json(observation.fields),
+                _safe_json(observation.metadata),
+                _safe_json(observation.reason_codes),
+                _safe_json(assessment.to_dict() if assessment is not None else {}),
             ],
         )
         return cursor.fetchone() is not None
