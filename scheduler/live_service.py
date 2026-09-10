@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -25,6 +26,8 @@ from data_pipeline.candle_pipeline import OneMinuteCandlePipeline, aggregate_can
 from data_pipeline.microstructure import MicrostructureAccumulator
 from data_pipeline.provider_runtime import ProviderCircuitBreaker, TokenBucket
 from data_pipeline.coingecko_adapter import CoinGeckoAdapter, default_coingecko_transport
+from data_pipeline.market_data_providers import CoinGlassProvider, CoinMarketCapProvider, CryptoPanicProvider
+from data_pipeline.provider_contracts import ProviderCapability, ProviderObservation
 from execution.paper_futures import PaperFuturesSimulator
 from execution.portfolio_stress import assess_portfolio_stress
 from intelligence.evidence_engine import (
@@ -36,6 +39,7 @@ from intelligence.rss_adapter import RSSNewsAdapter, default_rss_transport
 from intelligence.production_models import (
     DataHealth,
     DataMode,
+    FeatureSnapshot,
     IngestionGap,
     IngestionGapStatus,
     MarketChannel,
@@ -43,6 +47,8 @@ from intelligence.production_models import (
 )
 from risk.production_gate import assess_paper_signal
 from scoring.signal_engine import score_directional_setup
+from scoring.live_scanner import ScannerInput, ScannerScore, score_scanner_input
+from scoring.shadow_strategy import classify_shadow_strategy
 from scoring.model_lifecycle import train_eligible_buckets
 from scoring.outcome_labeler import label_expired_signals
 from scheduler.control_api import LocalControlServer
@@ -80,10 +86,15 @@ class LiveResearchService:
         self.identity_registry = AssetIdentityRegistry.reviewed_defaults()
         self.candle_pipeline = OneMinuteCandlePipeline()
         self.microstructure = MicrostructureAccumulator()
+        self._latest_trade_delta: dict[str, float] = {}
         self.rest_circuit = ProviderCircuitBreaker("bitunix_public_rest", "market")
         self.rest_bucket = TokenBucket(rate_per_second=8.0, capacity=8)
         self.coingecko_bucket = TokenBucket(rate_per_second=0.4, capacity=1)
         self.coingecko = CoinGeckoAdapter(default_coingecko_transport)
+        # Optional keys are read from the process environment only; they are never persisted or logged.
+        self.coinglass = CoinGlassProvider(api_key=os.environ.get("COINGLASS_API_KEY"))
+        self.coinmarketcap = CoinMarketCapProvider(api_key=os.environ.get("COINMARKETCAP_API_KEY"))
+        self.cryptopanic = CryptoPanicProvider(api_key=os.environ.get("CRYPTOPANIC_API_KEY"))
         self.rss = RSSNewsAdapter(default_rss_transport)
         self._news_cache: dict[str, tuple[dict[str, Any], ...]] = {}
         self.logger: logging.Logger = logging.getLogger("traidr.live_service")
@@ -199,6 +210,9 @@ class LiveResearchService:
                 source_identifier=symbol,
             )
             cross_market = await self._cross_market(identity.canonical_asset_id if identity else None, mark_price)
+            external_context = await self._external_market_context(symbol, mark_price)
+            if external_context:
+                cross_market = {**(cross_market or {}), **external_context}
             if mark_price is not None and instrument_id in self.paper_simulator.positions:
                 marked = self.paper_simulator.process_price(instrument_id, mark_price)
                 if marked.ok and marked.value is not None:
@@ -261,6 +275,24 @@ class LiveResearchService:
                         }
                     )
                 repository.record_feature(feature)
+                if horizon == "15m":
+                    scanner_score = self._build_scanner_score(
+                        symbol=symbol,
+                        feature=feature,
+                        candles=candles,
+                        depth_imbalance=depth_imbalance,
+                        funding=funding,
+                        external_context=cross_market,
+                        canonical_asset_id=identity.canonical_asset_id if identity else None,
+                    )
+                    repository.record_scanner_score(scanner_score)
+                    await self._record_shadow_context(
+                        repository=repository,
+                        symbol=symbol,
+                        feature=feature,
+                        candles=candles,
+                        external_context=cross_market,
+                    )
                 bundle = build_evidence_bundle(
                     feature,
                     canonical_asset_id=identity.canonical_asset_id if identity else None,
@@ -325,6 +357,97 @@ class LiveResearchService:
                 self._record_rest_health(repository, symbol, MarketChannel.KLINE, "HEALTHY", ("BITUNIX_REST_ANALYSIS_OK",))
         repository.record_portfolio(self.paper_simulator.snapshot())
 
+    def _build_scanner_score(
+        self,
+        *,
+        symbol: str,
+        feature: FeatureSnapshot,
+        candles: tuple[BitunixCandle, ...] | list[BitunixCandle],
+        depth_imbalance: float | None,
+        funding: BitunixFundingRate | None,
+        external_context: dict[str, Any] | None,
+        canonical_asset_id: str | None,
+        reference_at: datetime | None = None,
+    ) -> ScannerScore:
+        """Build a factor-auditable research score from available live evidence."""
+
+        fields: dict[str, float] = {}
+        sources: dict[str, str] = {}
+        technical = feature.features
+        trend = technical.get("trend_strength_pct")
+        if trend is not None:
+            fields["price_structure"] = max(-1.0, min(1.0, float(trend) / 1.5))
+            sources["price_structure"] = "bitunix:multi_horizon"
+        volume = sum((float(candle.quote_volume) for candle in candles[-96:]), 0.0)
+        if volume > 0:
+            fields["volume_24h_usd"] = volume
+            sources["volume_24h_usd"] = "bitunix:candles"
+        if depth_imbalance is not None:
+            fields["order_book_imbalance"] = float(depth_imbalance)
+            sources["order_book_imbalance"] = "bitunix:depth"
+        trade_delta = self._latest_trade_delta.get(feature.instrument_id)
+        if trade_delta is not None:
+            fields["trade_delta"] = trade_delta
+            sources["trade_delta"] = "bitunix:trades"
+        if funding is not None:
+            fields["funding_rate"] = float(funding.funding_rate)
+            sources["funding_rate"] = "bitunix:funding"
+
+        context = external_context or {}
+        for field_name, context_keys, source in (
+            ("funding_rate", ("coinglass_funding_rate",), "coinglass"),
+            ("oi_change_pct", ("coinglass_oi_change_pct",), "coinglass"),
+            ("liquidation_pressure", ("coinglass_liquidation_pressure",), "coinglass"),
+            ("btc_eth_correlation", ("btc_eth_correlation",), "correlation:btc_eth"),
+        ):
+            if field_name in fields:
+                continue
+            value = next((context.get(key) for key in context_keys if isinstance(context.get(key), (int, float))), None)
+            if value is not None:
+                fields[field_name] = float(value)
+                sources[field_name] = source
+
+        news_rows = self._news_cache.get(canonical_asset_id or "", ())
+        catalyst = next(
+            (
+                float(item["catalyst_score"])
+                for item in news_rows
+                if isinstance(item.get("catalyst_score"), (int, float))
+            ),
+            None,
+        )
+        if catalyst is not None:
+            fields["news_catalyst"] = catalyst
+            sources["news_catalyst"] = "rss:news_evidence"
+
+        last_price = technical.get("last_price")
+        support = technical.get("support")
+        resistance = technical.get("resistance")
+        if last_price is not None and support is not None and resistance is not None:
+            downside = max(float(last_price) - float(support), 0.0)
+            upside = max(float(resistance) - float(last_price), 0.0)
+            if downside > 0:
+                fields["risk_reward"] = upside / downside
+                sources["risk_reward"] = "bitunix:structure"
+
+        conflicts: list[str] = []
+        for key in ("divergence_bps", "coinmarketcap_divergence_bps"):
+            value = context.get(key)
+            if isinstance(value, (int, float)) and abs(float(value)) > 100.0:
+                conflicts.append(f"{key.upper()}_OVER_100_BPS")
+        return score_scanner_input(
+            ScannerInput(
+                instrument_id=f"bitunix:{symbol}",
+                fields=fields,
+                field_sources=sources,
+                observed_at=feature.observed_at,
+                reference_at=reference_at or datetime.now(tz=UTC),
+                conflicts=tuple(conflicts),
+                critical_conflict=bool(conflicts),
+                volume_reference=None,
+            )
+        )
+
     def _paper_return_histories(self, repository: MarketRepository) -> dict[str, tuple[float, ...]]:
         histories: dict[str, tuple[float, ...]] = {}
         for position in self.paper_simulator.open_positions():
@@ -336,6 +459,66 @@ class LiveResearchService:
                 if previous > 0
             )
         return histories
+
+    async def _record_shadow_context(
+        self,
+        *,
+        repository: MarketRepository,
+        symbol: str,
+        feature: FeatureSnapshot,
+        candles: tuple[BitunixCandle, ...] | list[BitunixCandle],
+        external_context: dict[str, Any] | None,
+    ) -> None:
+        """Persist optional provider evidence with an explicit zero scoring weight."""
+
+        instrument_id = f"bitunix:{symbol}"
+        results = await asyncio.gather(
+            self.coinglass.fetch_shadow(symbol),
+            self.coinmarketcap.fetch(symbol),
+            self.cryptopanic.fetch(symbol),
+        )
+        fields: dict[str, float] = {}
+        observed_times = [feature.observed_at]
+        reasons: list[str] = []
+        for result in results:
+            reasons.extend(result.reason_codes)
+            if result.ok and result.value is not None:
+                repository.record_shadow_evidence(result.value)
+                fields.update(result.value.fields)
+                observed_times.append(result.value.observed_at)
+
+        if len(candles) >= 5 and float(candles[-5].close) > 0:
+            fields["price_change_1h_pct"] = (
+                (float(candles[-1].close) / float(candles[-5].close)) - 1.0
+            ) * 100.0
+        context = external_context or {}
+        conflicts = tuple(
+            f"{key.upper()}_OVER_100_BPS"
+            for key in ("divergence_bps", "coinmarketcap_divergence_bps")
+            if isinstance(context.get(key), (int, float)) and abs(float(context[key])) > 100.0
+        )
+        observed_at = min(observed_times)
+        assessment = classify_shadow_strategy(
+            instrument_id,
+            fields,
+            observed_at=observed_at,
+            conflicts=conflicts,
+        )
+        derived = ProviderObservation(
+            provider="traidr_shadow_strategy",
+            instrument_id=instrument_id,
+            observed_at=observed_at,
+            received_at=datetime.now(tz=UTC),
+            fields=fields,
+            capabilities=(ProviderCapability.MARKET_REGIME,),
+            metadata={
+                "shadow_only": "true",
+                "probability_state": assessment.probability_state.value,
+                "source_count": str(sum(1 for result in results if result.ok)),
+            },
+            reason_codes=tuple(dict.fromkeys((*reasons, *assessment.reason_codes))),
+        )
+        repository.record_shadow_evidence(derived, assessment)
 
     async def _handle_event(self, repository: MarketRepository, event: MarketEvent) -> None:
         repository.record_market_event(event)
@@ -361,6 +544,7 @@ class LiveResearchService:
                 )
         metric = self.microstructure.ingest(event)
         if metric is not None:
+            self._latest_trade_delta[metric.instrument_id] = metric.trade_delta
             repository.record_microstructure(
                 metric_id=metric.metric_id,
                 instrument_id=metric.instrument_id,
@@ -553,6 +737,47 @@ class LiveResearchService:
                         existing = self._news_cache.get(str(asset_id), ())
                         self._news_cache[str(asset_id)] = tuple((item, *existing))[:50]
             await self._wait(900)
+
+    async def _external_market_context(
+        self,
+        symbol: str,
+        futures_price: Decimal | None,
+    ) -> dict[str, Any] | None:
+        """Collect optional read-only derivatives and market context for evidence."""
+
+        context: dict[str, Any] = {}
+        coinglass = await self.coinglass.fetch(symbol)
+        if coinglass.ok and coinglass.value is not None:
+            for key in (
+                "funding_rate",
+                "open_interest",
+                "oi_change_pct",
+                "liquidation_pressure",
+                "long_short_ratio",
+            ):
+                value = coinglass.value.fields.get(key)
+                if value is not None:
+                    context[f"coinglass_{key}"] = value
+            context["coinglass_observed_at"] = coinglass.value.observed_at.isoformat()
+        elif coinglass.reason_codes:
+            context["coinglass_reason_codes"] = list(coinglass.reason_codes)
+
+        coinmarketcap = await self.coinmarketcap.fetch(symbol)
+        if coinmarketcap.ok and coinmarketcap.value is not None:
+            for key in ("price_usd", "market_cap_usd", "volume_24h_usd", "percent_change_24h"):
+                value = coinmarketcap.value.fields.get(key)
+                if value is not None:
+                    context[f"coinmarketcap_{key}"] = value
+            cmc_price = coinmarketcap.value.fields.get("price_usd")
+            if futures_price is not None and isinstance(cmc_price, (int, float)) and cmc_price > 0:
+                context["coinmarketcap_divergence_bps"] = float(
+                    (futures_price - Decimal(str(cmc_price))) / Decimal(str(cmc_price)) * Decimal("10000")
+                )
+            context["coinmarketcap_observed_at"] = coinmarketcap.value.observed_at.isoformat()
+        elif coinmarketcap.reason_codes:
+            context["coinmarketcap_reason_codes"] = list(coinmarketcap.reason_codes)
+
+        return context or None
 
     async def _cross_market(
         self,

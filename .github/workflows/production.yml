@@ -26,11 +26,11 @@ jobs:
       - name: Install local browser test runtime
         run: python -m playwright install chromium
       - name: Compile Python
-        run: python -m compileall -q agents alerts ask cli config dashboard data_pipeline execution intelligence lifecycle memory notifications onchain operator portfolio radar reports risk scheduler scoring sentiment storage technicals thesis token_detail utils watchlist
+        run: python -m compileall -q agents alerts ask cli config dashboard data_pipeline execution intelligence lifecycle memory notifications onchain operator portfolio radar reports risk scheduler scoring sentiment storage technicals thesis token_detail utils watchlist web_api
       - name: Ruff
         run: python -m ruff check .
       - name: Mypy production contracts
-        run: python -m mypy intelligence data_pipeline execution risk scoring storage config
+        run: python -m mypy intelligence data_pipeline execution risk scoring storage config web_api
       - name: JavaScript syntax
         run: node --check dashboard/components/chart_engine.js
       - name: Tests and safety gates
@@ -39,3 +39,28 @@ jobs:
         run: python scripts/forbidden_capability_scan.py
       - name: Migration and backup restore smoke
         run: python scripts/certification_smoke.py
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.14.1"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+      - name: Lint frontend
+        run: npm run lint
+      - name: Typecheck frontend
+        run: npm run typecheck
+      - name: Test frontend and accessibility
+        run: npm run test
+      - name: Build frontend
+        run: npm run build

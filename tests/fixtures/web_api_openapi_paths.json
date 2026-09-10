@@ -1,0 +1,10 @@
+{
+  "/health": ["get"],
+  "/api/v1/status": ["get"],
+  "/api/v1/overview": ["get"],
+  "/api/v1/scanner": ["get"],
+  "/api/v1/scanner/{instrument_id}": ["get"],
+  "/api/v1/markets": ["get"],
+  "/api/v1/markets/{instrument_id}": ["get"],
+  "/api/v1/markets/{instrument_id}/chart": ["get"]
+}

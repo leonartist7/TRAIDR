@@ -11,6 +11,7 @@ import yaml
 
 SETTINGS_PATH = Path(__file__).resolve().parents[1] / "config" / "settings.yaml"
 DEFAULT_LIMIT = 20
+MARKET_CANDLE_INTERVALS = frozenset({"1m", "5m", "15m", "1h", "4h", "1d"})
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,8 @@ class DashboardData:
     model_artifacts: list[dict[str, Any]] = field(default_factory=list)
     certification_runs: list[dict[str, Any]] = field(default_factory=list)
     decision_audit: list[dict[str, Any]] = field(default_factory=list)
+    scanner_scores: list[dict[str, Any]] = field(default_factory=list)
+    shadow_evidence: list[dict[str, Any]] = field(default_factory=list)
 
 
 def configured_database_path() -> Path:
@@ -426,6 +429,28 @@ def load_dashboard_data(
                 FROM evidence_bundles ORDER BY generated_at DESC LIMIT ?
                 """, limit,
             ),
+            scanner_scores=_query_if_table(
+                connection, tables, "market_scanner_scores",
+                """
+                SELECT score_id, instrument_id, observed_at, recorded_at, status, direction,
+                       score, long_score, short_score, risk_score, conflicts_json,
+                       reason_codes_json, factor_breakdown_json
+                FROM market_scanner_scores
+                ORDER BY observed_at DESC, recorded_at DESC
+                LIMIT ?
+                """, limit,
+            ),
+            shadow_evidence=_query_if_table(
+                connection, tables, "shadow_market_evidence",
+                """
+                SELECT shadow_evidence_id, instrument_id, provider, observed_at, received_at,
+                       recorded_at, fields_json, metadata_json, reason_codes_json,
+                       assessment_json, shadow_only, scoring_weight, can_execute_trades
+                FROM shadow_market_evidence
+                ORDER BY observed_at DESC, recorded_at DESC
+                LIMIT ?
+                """, limit,
+            ),
             market_microstructure=_query_if_table(
                 connection, tables, "market_microstructure",
                 """
@@ -542,6 +567,92 @@ def load_safety_status() -> dict[str, Any]:
         "starting_capital_usd": simulation.get("starting_capital_usd"),
         "execution_target": simulation.get("execution_target"),
     }
+
+
+def load_market_candles(
+    database_path: str | Path,
+    instrument_id: str,
+    interval: str,
+    *,
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    """Load recent sufficient candles through a fixed, read-only query.
+
+    This helper is intentionally separate from the single-writer repository. The
+    API and Streamlit dashboard may read stored candles, but neither path can
+    create a database, write market data, or select an arbitrary table/query.
+    """
+
+    if not instrument_id.strip():
+        raise ValueError("instrument_id must not be empty")
+    if interval not in MARKET_CANDLE_INTERVALS:
+        raise ValueError(f"unsupported market interval: {interval}")
+    if not 1 <= limit <= 2_000:
+        raise ValueError("limit must be between 1 and 2000")
+
+    path = Path(database_path)
+    path = path if path.is_absolute() else SETTINGS_PATH.parents[1] / path
+    if not path.exists():
+        return []
+
+    with duckdb.connect(database=str(path), read_only=True) as connection:
+        tables = _list_tables(connection)
+        if "market_candles" not in tables:
+            return []
+        cursor = connection.execute(
+            """
+            SELECT open_time_ms, open, high, low, close, base_volume,
+                   quote_volume, source, received_at, quality
+            FROM market_candles
+            WHERE instrument_id = ?
+              AND interval = ?
+              AND quality = 'sufficient'
+            ORDER BY open_time_ms DESC
+            LIMIT ?
+            """,
+            [instrument_id, interval, limit],
+        )
+        columns = [column[0] for column in cursor.description]
+        rows = [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
+        return [
+            _with_non_execution_flag(row)
+            for row in reversed(rows)
+        ]
+
+
+def load_market_instruments(
+    database_path: str | Path,
+    *,
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    """Load reviewed/local instrument identities through a bounded read query."""
+
+    if not 1 <= limit <= 2_000:
+        raise ValueError("limit must be between 1 and 2000")
+    path = Path(database_path)
+    path = path if path.is_absolute() else SETTINGS_PATH.parents[1] / path
+    if not path.exists():
+        return []
+
+    with duckdb.connect(database=str(path), read_only=True) as connection:
+        tables = _list_tables(connection)
+        if "market_instruments" not in tables:
+            return []
+        cursor = connection.execute(
+            """
+            SELECT instrument_id, source, symbol, base_asset, quote_asset,
+                   status, discovered_at, refreshed_at
+            FROM market_instruments
+            ORDER BY refreshed_at DESC, instrument_id
+            LIMIT ?
+            """,
+            [limit],
+        )
+        columns = [column[0] for column in cursor.description]
+        return [
+            _with_non_execution_flag(dict(zip(columns, row, strict=True)))
+            for row in cursor.fetchall()
+        ]
 
 
 def _list_tables(connection: duckdb.DuckDBPyConnection) -> set[str]:

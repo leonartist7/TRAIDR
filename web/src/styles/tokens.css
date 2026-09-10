@@ -1,0 +1,30 @@
+:root {
+  color-scheme: dark;
+  --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --bg: #071012;
+  --bg-grid: rgba(154, 209, 191, 0.035);
+  --surface-1: #0b1719;
+  --surface-2: #102023;
+  --surface-3: #15282b;
+  --surface-hover: #193034;
+  --border: rgba(184, 220, 207, 0.14);
+  --border-strong: rgba(184, 220, 207, 0.27);
+  --text: #edf8f4;
+  --text-soft: #b9ccc6;
+  --muted: #829b94;
+  --lime: #b8f34b;
+  --lime-soft: rgba(184, 243, 75, 0.13);
+  --cyan: #59dbcd;
+  --cyan-soft: rgba(89, 219, 205, 0.12);
+  --amber: #ffbf69;
+  --amber-soft: rgba(255, 191, 105, 0.13);
+  --red: #ff7b7b;
+  --red-soft: rgba(255, 123, 123, 0.13);
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --sidebar-width: 250px;
+  --content-max: 1500px;
+}
